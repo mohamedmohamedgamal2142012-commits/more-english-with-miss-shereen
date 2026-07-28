@@ -1,74 +1,66 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, FormEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import {
-  IoSchool, IoNotifications, IoLogOut, IoMenu, IoGrid, IoPeople,
-  IoBook, IoCreate, IoDocumentText, IoTrash, IoCheckmarkCircle,
-  IoCloseCircle, IoBan, IoAdd, IoClose, IoArrowBack
-} from "react-icons/io5";
-import { FaUserGraduate, FaUsers, FaBookOpen, FaPencilAlt, FaChalkboardTeacher } from "react-icons/fa";
 import { getTranslation } from "@/lib/i18n";
+import {
+  fetchStudents, fetchPendingStudents, updateUserStatus, deleteUser,
+  fetchCourses, saveCourse, deleteCourse,
+  fetchLessons, saveLesson, deleteLesson,
+  fetchExams, saveExam, deleteExam, fetchExamResults, submitExamResult,
+  fetchHomework, saveHomework, deleteHomework, fetchSubmissions, gradeSubmission,
+  fetchFiles, saveFile, deleteFile, uploadFile,
+  fetchTransactions, addTransaction,
+  fetchReports, saveReport,
+  fetchNotifications, sendNotification, deleteNotification,
+  updateUserProfile
+} from "@/lib/firestore-utils";
+import type { AppUser, Course, Lesson, Exam, ExamResult, Homework, HomeworkSubmission, AppFile, WalletTransaction, Report, Notification } from "@/lib/types";
+import {
+  IoSchool, IoNotifications, IoLogOut, IoMenu, IoGrid,
+  IoPeople, IoBook, IoCreate, IoDocumentText, IoTrash,
+  IoCheckmarkCircle, IoCloseCircle, IoBan, IoAdd, IoClose,
+  IoArrowBack, IoSearch, IoFilter, IoReload, IoWallet,
+  IoStatsChart, IoRibbon, IoSettings, IoPaperPlane,
+  IoEye, IoEyeOff, IoCloudUpload, IoLink, IoCopy
+} from "react-icons/io5";
+import { FaUserGraduate, FaUsers, FaBookOpen, FaPencilAlt, FaChalkboardTeacher, FaCreditCard, FaFileAlt, FaRobot, FaGamepad, FaChartBar, FaWhatsapp } from "react-icons/fa";
 
-type TabKey = "overview" | "students" | "courses" | "lessons" | "exams" | "homework";
-
-interface Student {
-  id: string; name: string; email: string; phone: string; status: string; createdAt?: any;
-}
-
-interface Course {
-  id: string; name: string; grade: string; description: string; createdAt?: any;
-}
-
-interface Lesson {
-  id: string; title: string; courseId: string; courseName?: string; videoUrl: string; pdfUrl: string; content: string; order: number; createdAt?: any;
-}
-
-interface Exam {
-  id: string; title: string; courseId: string; courseName?: string; questions: string; createdAt?: any;
-}
-
-interface Homework {
-  id: string; title: string; courseId: string; courseName?: string; dueDate: string; questions: string; createdAt?: any;
-}
-
-const sidebarLinks: { icon: any; label: string; key: TabKey }[] = [
-  { icon: IoGrid, label: "overview", key: "overview" },
-  { icon: FaUsers, label: "users", key: "students" },
-  { icon: FaBookOpen, label: "courses", key: "courses" },
-  { icon: FaPencilAlt, label: "homework", key: "lessons" },
-  { icon: IoDocumentText, label: "assignments", key: "exams" },
-  { icon: IoCreate, label: "assignments", key: "homework" },
-];
+type ATab = "overview" | "students" | "requests" | "lessons" | "files" | "wallet" | "exams" | "homework" | "reports" | "notifications" | "settings";
 
 export default function AdminDashboard() {
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [tab, setTab] = useState<ATab>("overview");
   const { user, loading, userRole, logout } = useAuth();
   const router = useRouter();
 
-  const [students, setStudents] = useState<Student[]>([]);
+  // Data states
+  const [students, setStudents] = useState<AppUser[]>([]);
+  const [pendingStudents, setPendingStudents] = useState<AppUser[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
+  const [examResults, setExamResults] = useState<ExamResult[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
-  const [dataLoading, setDataLoading] = useState(false);
+  const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
+  const [files, setFiles] = useState<AppFile[]>([]);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
+  const [search, setSearch] = useState("");
 
+  // Modals
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<"course" | "lesson" | "exam" | "homework">("course");
+  const [modalType, setModalType] = useState<"course" | "lesson" | "exam" | "homework" | "wallet" | "report" | "notif">("course");
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<any>({});
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  useEffect(() => {
-    setLang(document.documentElement.lang === "ar" ? "ar" : "en");
-  }, []);
+  useEffect(() => { setLang(document.documentElement.lang === "ar" ? "ar" : "en"); }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -78,534 +70,641 @@ export default function AdminDashboard() {
   }, [user, loading, userRole, router]);
 
   useEffect(() => {
-    if (user && userRole === "admin") {
-      fetchStudents();
-      fetchCourses();
-      fetchLessons();
-      fetchExams();
-      fetchHomework();
-    }
+    if (user && userRole === "admin") loadAll();
   }, [user, userRole]);
+
+  const loadAll = async () => {
+    setLoadingData(true);
+    const [s, p, c, l, e, er, h, f, tx, r, n] = await Promise.all([
+      fetchStudents(), fetchPendingStudents(), fetchCourses(), fetchLessons(),
+      fetchExams(), fetchExamResults(), fetchHomework(), fetchFiles(),
+      fetchTransactions(), fetchReports(), fetchNotifications()
+    ]);
+    setStudents(s); setPendingStudents(p); setCourses(c); setLessons(l);
+    setExams(e); setExamResults(er); setHomework(h); setFiles(f);
+    setTransactions(tx); setReports(r); setNotifications(n);
+    setLoadingData(false);
+  };
 
   const t = (key: string) => getTranslation(lang, key);
 
-  const fetchStudents = async () => {
-    const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    const list: Student[] = [];
-    snap.forEach(d => {
-      const dta = d.data();
-      if (dta.role === "student") {
-        list.push({ id: d.id, name: dta.name || "", email: dta.email || "", phone: dta.phone || "", status: dta.status || "active", createdAt: dta.createdAt });
-      }
-    });
-    setStudents(list);
-  };
+  if (loading || !user) return <div className="min-h-screen flex items-center justify-center bg-bg"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  const fetchCourses = async () => {
-    setDataLoading(true);
-    const q = query(collection(db, "courses"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    const list: Course[] = [];
-    snap.forEach(d => list.push({ id: d.id, ...d.data() } as Course));
-    setCourses(list);
-    setDataLoading(false);
-  };
+  // === MODAL HANDLERS ===
+  const openAdd = (type: typeof modalType) => { setModalType(type); setEditId(null); setForm({}); setSelectedFile(null); setShowModal(true); };
+  const openEdit = (type: typeof modalType, item: any) => { setModalType(type); setEditId(item.id); setForm(item); setShowModal(true); };
 
-  const fetchLessons = async () => {
-    const q = query(collection(db, "lessons"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    const list: Lesson[] = [];
-    for (const d of snap.docs) {
-      const dta = d.data();
-      const courseSnap = await getDoc(doc(db, "courses", dta.courseId || "none"));
-      list.push({ id: d.id, ...dta, courseName: courseSnap.exists() ? courseSnap.data().name : "" } as Lesson);
-    }
-    setLessons(list);
-  };
-
-  const fetchExams = async () => {
-    const q = query(collection(db, "exams"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    const list: Exam[] = [];
-    for (const d of snap.docs) {
-      const dta = d.data();
-      const courseSnap = await getDoc(doc(db, "courses", dta.courseId || "none"));
-      list.push({ id: d.id, ...dta, courseName: courseSnap.exists() ? courseSnap.data().name : "" } as Exam);
-    }
-    setExams(list);
-  };
-
-  const fetchHomework = async () => {
-    const q = query(collection(db, "homework"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    const list: Homework[] = [];
-    for (const d of snap.docs) {
-      const dta = d.data();
-      const courseSnap = await getDoc(doc(db, "courses", dta.courseId || "none"));
-      list.push({ id: d.id, ...dta, courseName: courseSnap.exists() ? courseSnap.data().name : "" } as Homework);
-    }
-    setHomework(list);
-  };
-
-  const updateStudentStatus = async (studentId: string, newStatus: string) => {
-    await updateDoc(doc(db, "users", studentId), { status: newStatus });
-    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, status: newStatus } : s));
-  };
-
-  const deleteStudent = async (studentId: string) => {
-    await deleteDoc(doc(db, "users", studentId));
-    setStudents(prev => prev.filter(s => s.id !== studentId));
-  };
-
-  const openAddModal = (type: "course" | "lesson" | "exam" | "homework") => {
-    setModalType(type);
-    setEditId(null);
-    setForm({});
-    setShowModal(true);
-  };
-
-  const openEditModal = (type: "course" | "lesson" | "exam" | "homework", item: any) => {
-    setModalType(type);
-    setEditId(item.id);
-    setForm(item);
-    setShowModal(true);
-  };
-
-  const handleFormSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const collectionMap = { course: "courses", lesson: "lessons", exam: "exams", homework: "homework" };
-    const colName = collectionMap[modalType];
-    const data = { ...form };
-    if (!editId) {
-      data.createdAt = serverTimestamp();
-      const ref = doc(collection(db, colName));
-      await setDoc(ref, data);
-    } else {
-      await updateDoc(doc(db, colName, editId), data);
+    const map: Record<string, string> = { course: "courses", lesson: "lessons", exam: "exams", homework: "homework" };
+    const col = map[modalType];
+    if (modalType === "course") { if (editId) await saveCourse(editId, form); else await saveCourse(null, form); }
+    else if (modalType === "lesson") {
+      const data = { ...form, codes: form.codes ? form.codes.split("\n").map((c: string) => c.trim()).filter(Boolean) : [], viewers: form.viewers || {} };
+      if (editId) await saveLesson(editId, data); else await saveLesson(null, data);
     }
+    else if (modalType === "exam") {
+      const questions = form.questionsArr || [];
+      const data = { ...form, questions };
+      if (editId) await saveExam(editId, data); else await saveExam(null, data);
+    }
+    else if (modalType === "homework") { if (editId) await saveHomework(editId, form); else await saveHomework(null, form); }
+    else if (modalType === "wallet") { await addTransaction(form.studentId, form.txType, Number(form.amount), form.description); }
+    else if (modalType === "report") { await saveReport(form); }
+    else if (modalType === "notif") { await sendNotification({ title: form.title, body: form.body, forStudents: true }); }
     setShowModal(false);
-    if (modalType === "course") fetchCourses();
-    else if (modalType === "lesson") fetchLessons();
-    else if (modalType === "exam") fetchExams();
-    else fetchHomework();
+    loadAll();
   };
 
-  const deleteItem = async (type: "course" | "lesson" | "exam" | "homework", id: string) => {
-    const collectionMap = { course: "courses", lesson: "lessons", exam: "exams", homework: "homework" };
-    await deleteDoc(doc(db, collectionMap[type], id));
-    if (type === "course") setCourses(prev => prev.filter(c => c.id !== id));
-    else if (type === "lesson") setLessons(prev => prev.filter(l => l.id !== id));
-    else if (type === "exam") setExams(prev => prev.filter(e => e.id !== id));
-    else setHomework(prev => prev.filter(h => h.id !== id));
+  const handleDelete = async (type: "course" | "lesson" | "exam" | "homework", id: string) => {
+    if (type === "course") await deleteCourse(id);
+    else if (type === "lesson") await deleteLesson(id);
+    else if (type === "exam") await deleteExam(id);
+    else await deleteHomework(id);
+    loadAll();
   };
 
-  if (loading || !user) {
+  const handleGrade = async (subId: string, grade: number, annotation: string, reward: number) => {
+    await gradeSubmission(subId, grade, annotation, reward);
+    loadAll();
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return;
+    const url = await uploadFile(selectedFile, `files/${Date.now()}_${selectedFile.name}`);
+    await saveFile({ name: selectedFile.name, url, type: selectedFile.type, size: selectedFile.size, isPublic: form.isPublic !== false, lessonId: form.lessonId || "" });
+    setSelectedFile(null);
+    loadAll();
+  };
+
+  // === SIDEBAR ===
+  const sidebarItems: { key: ATab; icon: any; label: string }[] = [
+    { key: "overview", icon: IoGrid, label: lang === "ar" ? "نظرة عامة" : "Overview" },
+    { key: "students", icon: FaUsers, label: lang === "ar" ? "الطلاب" : "Students" },
+    { key: "requests", icon: IoPeople, label: lang === "ar" ? "طلبات التسجيل" : "Requests" },
+    { key: "lessons", icon: IoBook, label: lang === "ar" ? "الدروس" : "Lessons" },
+    { key: "files", icon: FaFileAlt, label: lang === "ar" ? "الملفات" : "Files" },
+    { key: "wallet", icon: IoWallet, label: lang === "ar" ? "المحفظة" : "Wallet" },
+    { key: "exams", icon: IoCreate, label: lang === "ar" ? "الامتحانات" : "Exams" },
+    { key: "homework", icon: IoDocumentText, label: lang === "ar" ? "الواجبات" : "Homework" },
+    { key: "reports", icon: IoStatsChart, label: lang === "ar" ? "التقارير" : "Reports" },
+    { key: "notifications", icon: IoNotifications, label: lang === "ar" ? "الإشعارات" : "Notifications" },
+    { key: "settings", icon: IoSettings, label: lang === "ar" ? "الإعدادات" : "Settings" },
+  ];
+
+  // === RENDER ===
+  const renderTab = () => {
+    switch (tab) {
+      case "overview": return <OverviewTab />;
+      case "students": return <StudentsTab />;
+      case "requests": return <RequestsTab />;
+      case "lessons": return <LessonsTab />;
+      case "files": return <FilesTab />;
+      case "wallet": return <WalletTab />;
+      case "exams": return <ExamsTab />;
+      case "homework": return <HomeworkTab />;
+      case "reports": return <ReportsTab />;
+      case "notifications": return <NotificationsTab />;
+      case "settings": return <SettingsTab />;
+      default: return null;
+    }
+  };
+
+  // ====== OVERVIEW ======
+  const OverviewTab = () => {
+    const activeStudents = students.filter(s => s.status === "active").length;
+    const pendingCount = pendingStudents.length;
     return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          {[
+            { icon: FaUserGraduate, bg: "bg-primary-light", color: "text-primary", value: activeStudents.toString(), label: lang === "ar" ? "طلاب معتمدين" : "Active Students" },
+            { icon: IoPeople, bg: "bg-[rgba(245,158,11,0.1)]", color: "text-yellow-600", value: pendingCount.toString(), label: lang === "ar" ? "معلقين" : "Pending" },
+            { icon: IoBook, bg: "bg-[rgba(79,70,229,0.1)]", color: "text-accent", value: lessons.length.toString(), label: lang === "ar" ? "دروس" : "Lessons" },
+            { icon: IoWallet, bg: "bg-[rgba(59,130,246,0.1)]", color: "text-blue-600", value: `${transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0)}`, label: lang === "ar" ? "إجمالي المحافظ" : "Total Wallet" },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-[20px] p-6 shadow-sm border border-border flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center ${s.color}`}><s.icon className="text-xl" /></div>
+              <div><strong className="text-2xl font-bold block">{s.value}</strong><span className="text-sm text-text-light">{s.label}</span></div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border">
+            <h4 className="text-base font-semibold mb-4">{lang === "ar" ? "آخر الطلاب" : "Recent Students"}</h4>
+            {students.slice(0, 5).map(s => (
+              <div key={s.id} className="flex justify-between items-center py-2 border-b border-border last:border-b-0">
+                <span className="text-sm font-medium">{s.name}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${s.status === "active" ? "bg-green-100 text-green-700" : s.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>{s.status}</span>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border">
+            <h4 className="text-base font-semibold mb-4">{lang === "ar" ? "آخر الدروس" : "Recent Lessons"}</h4>
+            {lessons.slice(0, 5).map(l => (
+              <div key={l.id} className="flex justify-between items-center py-2 border-b border-border last:border-b-0">
+                <span className="text-sm">{l.title}</span>
+                <span className="text-xs text-text-light">{l.viewers ? Object.keys(l.viewers).length : 0} {lang === "ar" ? "مشاهدة" : "views"}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
-  }
-
-  const statusBadge = (status: string) => {
-    switch (status) {
-      case "active": return "bg-green-100 text-green-800";
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "banned": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
   };
 
-  const statusText = (status: string) => {
-    if (lang === "ar") {
-      switch (status) {
-        case "active": return "نشط";
-        case "pending": return "قيد المراجعة";
-        case "banned": return "محظور";
-        default: return status;
-      }
-    }
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  };
-
-  const renderModal = () => {
-    if (!showModal) return null;
-    const titleMap = {
-      course: lang === "ar" ? "إضافة/تعديل كورس" : "Add/Edit Course",
-      lesson: lang === "ar" ? "إضافة/تعديل حصة" : "Add/Edit Lesson",
-      exam: lang === "ar" ? "إضافة/تعديل امتحان" : "Add/Edit Exam",
-      homework: lang === "ar" ? "إضافة/تعديل واجب" : "Add/Edit Homework",
-    };
-
+  // ====== STUDENTS ======
+  const StudentsTab = () => {
+    const filtered = students.filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.email.toLowerCase().includes(search.toLowerCase()));
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowModal(false)}>
-        <div className="bg-white rounded-[20px] p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold">{titleMap[modalType]}</h3>
-            <button onClick={() => setShowModal(false)} className="text-text-light hover:text-text text-xl cursor-pointer border-none bg-transparent"><IoClose /></button>
+      <div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
+          <div className="relative flex-1 max-w-xs">
+            <IoSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={lang === "ar" ? "بحث..." : "Search..."} className="w-full pl-10 pr-4 py-3 border border-border rounded-xl text-sm" />
           </div>
-          <form onSubmit={handleFormSubmit} className="space-y-4">
-            {modalType === "course" && (
-              <>
-                <input placeholder={lang === "ar" ? "اسم الكورس" : "Course Name"} value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-                <input placeholder={lang === "ar" ? "المرحلة (مثال: Grade 5)" : "Grade (e.g. Grade 5)"} value={form.grade || ""} onChange={e => setForm({ ...form, grade: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-                <textarea placeholder={lang === "ar" ? "الوصف" : "Description"} value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
-              </>
-            )}
-            {modalType === "lesson" && (
-              <>
-                <input placeholder={lang === "ar" ? "عنوان الحصة" : "Lesson Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-                <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required>
-                  <option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>
-                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => setForm({ ...form, videoUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
-                <input placeholder={lang === "ar" ? "رابط PDF" : "PDF URL"} value={form.pdfUrl || ""} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
-                <textarea placeholder={lang === "ar" ? "محتوى الحصة" : "Lesson Content"} value={form.content || ""} onChange={e => setForm({ ...form, content: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={4} />
-                <input type="number" placeholder={lang === "ar" ? "الترتيب" : "Order"} value={form.order || 0} onChange={e => setForm({ ...form, order: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
-              </>
-            )}
-            {modalType === "exam" && (
-              <>
-                <input placeholder={lang === "ar" ? "عنوان الامتحان" : "Exam Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-                <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required>
-                  <option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>
-                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <textarea placeholder={lang === "ar" ? "الأسئلة (سؤال لكل سطر)" : "Questions (one per line)"} value={form.questions || ""} onChange={e => setForm({ ...form, questions: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={6} required />
-              </>
-            )}
-            {modalType === "homework" && (
-              <>
-                <input placeholder={lang === "ar" ? "عنوان الواجب" : "Homework Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-                <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required>
-                  <option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>
-                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <input type="date" value={form.dueDate || ""} onChange={e => setForm({ ...form, dueDate: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-                <textarea placeholder={lang === "ar" ? "الأسئلة (سؤال لكل سطر)" : "Questions (one per line)"} value={form.questions || ""} onChange={e => setForm({ ...form, questions: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={6} required />
-              </>
-            )}
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 border border-border rounded-xl text-sm font-medium text-text-light hover:bg-bg transition-all cursor-pointer">
-                {lang === "ar" ? "إلغاء" : "Cancel"}
-              </button>
-              <button type="submit" className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-1px] transition-all duration-300 cursor-pointer">
-                {editId ? (lang === "ar" ? "تحديث" : "Update") : (lang === "ar" ? "إضافة" : "Create")}
-              </button>
+          <span className="text-sm text-text-light">{students.length} {lang === "ar" ? "طالب" : "students"}</span>
+        </div>
+        <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead><tr>{[lang === "ar" ? "الاسم" : "name", lang === "ar" ? "البريد" : "email", lang === "ar" ? "الحالة" : "status", lang === "ar" ? "المحفظة" : "wallet", lang === "ar" ? "إجراءات" : "actions"].map(h => <th key={h} className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{h}</th>)}</tr></thead>
+            <tbody>
+              {filtered.map(s => (
+                <tr key={s.id} className="hover:bg-bg transition-colors">
+                  <td className="px-4 py-3.5 border-b border-border font-medium">{s.name}</td>
+                  <td className="px-4 py-3.5 border-b border-border text-text-light">{s.email}</td>
+                  <td className="px-4 py-3.5 border-b border-border">
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${s.status === "active" ? "bg-green-100 text-green-800" : s.status === "pending" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>{s.status}</span>
+                  </td>
+                  <td className="px-4 py-3.5 border-b border-border">{s.wallet || 0}</td>
+                  <td className="px-4 py-3.5 border-b border-border">
+                    <div className="flex gap-2">
+                      {s.status === "pending" && <button onClick={() => { updateUserStatus(s.id, "active"); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs cursor-pointer border-none" title="Approve"><IoCheckmarkCircle /></button>}
+                      {s.status === "active" && <button onClick={() => { updateUserStatus(s.id, "banned"); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs cursor-pointer border-none" title="Ban"><IoBan /></button>}
+                      {s.status === "banned" && <button onClick={() => { updateUserStatus(s.id, "active"); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs cursor-pointer border-none" title="Unban"><IoCheckmarkCircle /></button>}
+                      <button onClick={() => { deleteUser(s.id); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs cursor-pointer border-none" title="Delete"><IoTrash /></button>
+                      <button onClick={() => { setForm({ studentId: s.id, txType: "credit", amount: 0, description: "" }); openAdd("wallet"); }} className="px-2 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs cursor-pointer border-none" title="Add Wallet"><IoWallet /></button>
+                      {s.phone && <a href={`https://wa.me/${s.phone.replace(/^0/, "2")}`} target="_blank" className="px-2 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs inline-flex items-center cursor-pointer"><FaWhatsapp /></a>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // ====== REQUESTS ======
+  const RequestsTab = () => (
+    <div>
+      <h3 className="text-lg font-semibold mb-5">{lang === "ar" ? "طلبات التسجيل" : "Registration Requests"} ({pendingStudents.length})</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {pendingStudents.map(s => (
+          <div key={s.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border">
+            <div className="w-14 h-14 rounded-full bg-primary-light flex items-center justify-center text-primary font-bold text-xl mx-auto mb-3">{s.name?.charAt(0)}</div>
+            <h4 className="font-semibold text-center">{s.name}</h4>
+            <p className="text-xs text-text-light text-center">{s.email}</p>
+            <p className="text-xs text-text-light text-center">{s.phone}</p>
+            {s.school && <p className="text-xs text-text-light text-center mt-1">{s.school}</p>}
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => { updateUserStatus(s.id, "active"); loadAll(); }} className="flex-1 px-3 py-2 rounded-xl bg-green-100 text-green-700 text-xs font-medium cursor-pointer border-none flex items-center justify-center gap-1"><IoCheckmarkCircle /> {lang === "ar" ? "قبول" : "Approve"}</button>
+              <button onClick={() => { updateUserStatus(s.id, "banned"); loadAll(); }} className="flex-1 px-3 py-2 rounded-xl bg-red-100 text-red-700 text-xs font-medium cursor-pointer border-none flex items-center justify-center gap-1"><IoCloseCircle /> {lang === "ar" ? "رفض" : "Reject"}</button>
+              {s.phone && <a href={`https://wa.me/${s.phone.replace(/^0/, "2")}`} target="_blank" className="px-3 py-2 rounded-xl bg-green-100 text-green-700 text-xs font-medium inline-flex items-center cursor-pointer"><FaWhatsapp /></a>}
             </div>
+          </div>
+        ))}
+        {pendingStudents.length === 0 && <div className="col-span-full text-center py-12 text-text-light">{lang === "ar" ? "لا توجد طلبات معلقة" : "No pending requests"}</div>}
+      </div>
+    </div>
+  );
+
+  // ====== LESSONS ======
+  const LessonsTab = () => {
+    const [playing, setPlaying] = useState<Lesson | null>(null);
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-lg font-semibold">{lang === "ar" ? "الدروس" : "Lessons"} ({lessons.length})</h3>
+          <button onClick={() => openAdd("lesson")} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إضافة درس" : "Add Lesson"}</button>
+        </div>
+        {playing ? (
+          <div>
+            <button onClick={() => setPlaying(null)} className="flex items-center gap-2 text-sm text-primary mb-4 cursor-pointer bg-transparent border-none"><IoArrowBack /> {lang === "ar" ? "عودة" : "Back"}</button>
+            <h4 className="text-xl font-bold mb-3">{playing.title}</h4>
+            {playing.videoUrl && <div className="aspect-video bg-black rounded-xl overflow-hidden mb-4"><iframe src={playing.videoUrl.replace("watch?v=", "embed/")} className="w-full h-full" allowFullScreen /></div>}
+            {playing.embedCode && <div className="mb-4" dangerouslySetInnerHTML={{ __html: playing.embedCode }} />}
+            <div className="text-sm mb-2">{lang === "ar" ? "الكودات:" : "Codes:"} {playing.codes?.join(", ") || "—"}</div>
+            <div className="text-sm mb-2">{lang === "ar" ? "حد المشاهدات:" : "View limit:"} {playing.viewLimit || 0}</div>
+            <div className="text-sm">{lang === "ar" ? "المشاهدون:" : "Viewers:"} {playing.viewers ? Object.keys(playing.viewers).length : 0}</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {lessons.map(l => (
+              <div key={l.id} className="bg-white rounded-[20px] p-4 shadow-sm border border-border">
+                <h4 className="font-semibold">{l.title}</h4>
+                <p className="text-xs text-text-light mt-1">{l.courseName} • {l.viewers ? Object.keys(l.viewers).length : 0} views</p>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => setPlaying(l)} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><IoEye /></button>
+                  <button onClick={() => openEdit("lesson", { ...l, codes: l.codes?.join("\n") || "" })} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><FaPencilAlt /></button>
+                  <button onClick={() => handleDelete("lesson", l.id)} className="px-3 py-1.5 rounded-lg bg-bg text-red-500 text-sm cursor-pointer border-none"><IoTrash /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ====== FILES ======
+  const FilesTab = () => (
+    <div>
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-lg font-semibold">{lang === "ar" ? "الملفات" : "Files"} ({files.length})</h3>
+        <div className="flex gap-2">
+          <input type="file" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="text-sm" />
+          <select value={form.lessonId || ""} onChange={e => setForm({ ...form, lessonId: e.target.value })} className="px-3 py-2 border border-border rounded-xl text-sm">
+            <option value="">{lang === "ar" ? "عام" : "Public"}</option>
+            {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+          </select>
+          <button onClick={handleFileUpload} disabled={!selectedFile} className="px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none disabled:opacity-50"><IoCloudUpload /> {lang === "ar" ? "رفع" : "Upload"}</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {files.map(f => {
+          const lesson = lessons.find(l => l.id === f.lessonId);
+          return (
+            <div key={f.id} className="bg-white rounded-[20px] p-4 shadow-sm border border-border flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FaFileAlt className="text-primary text-xl" />
+                <div>
+                  <span className="text-sm font-medium block">{f.name}</span>
+                  <span className="text-xs text-text-light">{f.isPublic ? (lang === "ar" ? "عام" : "Public") : lesson?.title || (lang === "ar" ? "محجوب" : "Locked")}</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <a href={f.url} target="_blank" className="px-2 py-1.5 rounded-lg bg-bg text-sm cursor-pointer"><IoEye /></a>
+                <button onClick={() => { deleteFile(f.id, f.url); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-bg text-red-500 text-sm cursor-pointer border-none"><IoTrash /></button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ====== WALLET ======
+  const WalletTab = () => (
+    <div>
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-lg font-semibold">{lang === "ar" ? "المحفظة" : "Wallet"}</h3>
+        <button onClick={() => { setForm({ studentId: students[0]?.id || "", txType: "credit", amount: 0, description: "" }); openAdd("wallet"); }} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إضافة معاملة" : "Add Transaction"}</button>
+      </div>
+      <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead><tr>{[lang === "ar" ? "الطالب" : "student", lang === "ar" ? "النوع" : "type", lang === "ar" ? "المبلغ" : "amount", lang === "ar" ? "الوصف" : "description", lang === "ar" ? "التاريخ" : "date"].map(h => <th key={h} className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{h}</th>)}</tr></thead>
+          <tbody>
+            {transactions.map(tx => {
+              const student = students.find(s => s.id === tx.studentId);
+              return (
+                <tr key={tx.id} className="hover:bg-bg">
+                  <td className="px-4 py-3.5 border-b border-border">{student?.name || tx.studentId}</td>
+                  <td className="px-4 py-3.5 border-b border-border"><span className={`text-xs font-semibold ${tx.type === "credit" ? "text-green-600" : "text-red-600"}`}>{tx.type === "credit" ? (lang === "ar" ? "إيداع" : "Credit") : (lang === "ar" ? "خصم" : "Debit")}</span></td>
+                  <td className="px-4 py-3.5 border-b border-border font-bold">{tx.type === "credit" ? "+" : "-"}{tx.amount}</td>
+                  <td className="px-4 py-3.5 border-b border-border text-text-light">{tx.description}</td>
+                  <td className="px-4 py-3.5 border-b border-border text-text-light">{tx.createdAt?.toDate?.().toLocaleDateString() || ""}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // ====== EXAMS ======
+  const ExamsTab = () => {
+    const [examQuestions, setExamQuestions] = useState<{ id: string; type: string; question: string; options: string[]; correctAnswer: string; points: number }[]>([]);
+    const [qForm, setQForm] = useState({ type: "mcq", question: "", options: "", correctAnswer: "", points: 1 });
+    const addQ = () => {
+      setExamQuestions([...examQuestions, { ...qForm, id: Date.now().toString(), options: qForm.options.split("\n").filter(Boolean) }]);
+      setQForm({ type: "mcq", question: "", options: "", correctAnswer: "", points: 1 });
+    };
+    const startExamCreate = () => { setExamQuestions([]); setForm({}); openAdd("exam"); };
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-lg font-semibold">{lang === "ar" ? "الامتحانات" : "Exams"} ({exams.length})</h3>
+          <button onClick={startExamCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إضافة امتحان" : "Add Exam"}</button>
+        </div>
+        {showModal && modalType === "exam" && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowModal(false)}>
+            <div className="bg-white rounded-[20px] p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{lang === "ar" ? "إضافة/تعديل امتحان" : "Add/Edit Exam"}</h3><button onClick={() => setShowModal(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
+              <form onSubmit={(e) => { e.preventDefault(); setForm({ ...form, questions: examQuestions }); handleSubmit(e); }} className="space-y-4">
+                <input placeholder={lang === "ar" ? "عنوان الامتحان" : "Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+                <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required>
+                  <option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <div className="flex gap-4">
+                  <input type="number" placeholder={lang === "ar" ? "المدة (دقائق)" : "Duration (min)"} value={form.duration || 10} onChange={e => setForm({ ...form, duration: Number(e.target.value) })} className="flex-1 px-4 py-3 border border-border rounded-xl text-sm" />
+                  <input type="number" placeholder={lang === "ar" ? "درجة النجاح %" : "Pass Score %"} value={form.passScore || 50} onChange={e => setForm({ ...form, passScore: Number(e.target.value) })} className="flex-1 px-4 py-3 border border-border rounded-xl text-sm" />
+                </div>
+                <div className="border-t border-border pt-4">
+                  <h4 className="font-semibold mb-3">{lang === "ar" ? "الأسئلة" : "Questions"} ({examQuestions.length})</h4>
+                  {examQuestions.map((q, i) => (
+                    <div key={q.id} className="bg-bg p-3 rounded-xl mb-2 text-sm">
+                      <span className="font-medium">{i + 1}. {q.question}</span> <span className="text-xs text-text-light">({q.type})</span>
+                      <button type="button" onClick={() => setExamQuestions(examQuestions.filter(x => x.id !== q.id))} className="float-right text-red-500 cursor-pointer bg-transparent border-none"><IoTrash /></button>
+                    </div>
+                  ))}
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <select value={qForm.type} onChange={e => setQForm({ ...qForm, type: e.target.value })} className="px-3 py-2 border border-border rounded-xl text-sm">
+                      <option value="mcq">MCQ</option><option value="tf">{lang === "ar" ? "صواب/خطأ" : "True/False"}</option><option value="short">{lang === "ar" ? "إجابة قصيرة" : "Short Answer"}</option>
+                    </select>
+                    <input type="number" placeholder={lang === "ar" ? "النقاط" : "Points"} value={qForm.points} onChange={e => setQForm({ ...qForm, points: Number(e.target.value) })} className="px-3 py-2 border border-border rounded-xl text-sm" />
+                  </div>
+                  <textarea placeholder={lang === "ar" ? "السؤال" : "Question"} value={qForm.question} onChange={e => setQForm({ ...qForm, question: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm mt-2" />
+                  {qForm.type === "mcq" && <textarea placeholder={lang === "ar" ? "الخيارات (سطر لكل خيار)" : "Options (one per line)"} value={qForm.options} onChange={e => setQForm({ ...qForm, options: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm mt-2" />}
+                  <input placeholder={lang === "ar" ? "الإجابة الصحيحة" : "Correct Answer"} value={qForm.correctAnswer} onChange={e => setQForm({ ...qForm, correctAnswer: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm mt-2" />
+                  <button type="button" onClick={addQ} className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-sm cursor-pointer border-none">{lang === "ar" ? "إضافة سؤال" : "Add Question"}</button>
+                </div>
+                <button type="submit" className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{editId ? (lang === "ar" ? "تحديث" : "Update") : (lang === "ar" ? "إنشاء الامتحان" : "Create Exam")}</button>
+              </form>
+            </div>
+          </div>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {exams.map(e => (
+            <div key={e.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border">
+              <h4 className="font-semibold">{e.title}</h4>
+              <p className="text-xs text-text-light">{e.courseName} • {e.questions?.length || 0} Q • {e.duration || 0}min</p>
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => openEdit("exam", e)} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><FaPencilAlt /></button>
+                <button onClick={() => handleDelete("exam", e.id)} className="px-3 py-1.5 rounded-lg bg-bg text-red-500 text-sm cursor-pointer border-none"><IoTrash /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ====== HOMEWORK ======
+  const HomeworkTab = () => {
+    const [selectedHW, setSelectedHW] = useState<string | null>(null);
+    const [hwSubs, setHwSubs] = useState<HomeworkSubmission[]>([]);
+    const loadSubs = async (hwId: string) => {
+      setSelectedHW(hwId);
+      setHwSubs(await fetchSubmissions(hwId));
+    };
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-lg font-semibold">{lang === "ar" ? "الواجبات" : "Homework"} ({homework.length})</h3>
+          <button onClick={() => openAdd("homework")} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إضافة واجب" : "Add Homework"}</button>
+        </div>
+        {selectedHW ? (
+          <div>
+            <button onClick={() => setSelectedHW(null)} className="flex items-center gap-2 text-sm text-primary mb-4 cursor-pointer bg-transparent border-none"><IoArrowBack /> {lang === "ar" ? "عودة" : "Back"}</button>
+            <div className="space-y-4">
+              {hwSubs.map(sub => {
+                const student = students.find(s => s.id === sub.studentId);
+                return (
+                  <div key={sub.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-semibold">{student?.name || sub.studentId}</h4>
+                        <p className="text-xs text-text-light">{sub.files?.length || 0} {lang === "ar" ? "ملف" : "files"}</p>
+                      </div>
+                      {sub.grade !== undefined ? (
+                        <div className="text-right">
+                          <span className="text-lg font-bold text-primary">{sub.grade}</span>
+                          <p className="text-xs text-text-light">{sub.annotation}</p>
+                        </div>
+                      ) : (
+                        <button onClick={() => {
+                          const grade = prompt(lang === "ar" ? "الدرجة:" : "Grade:");
+                          if (grade) handleGrade(sub.id, Number(grade), prompt(lang === "ar" ? "ملاحظات:" : "Notes:") || "", Number(prompt(lang === "ar" ? "المكافأة:" : "Reward:") || "0"));
+                        }} className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs cursor-pointer border-none">{lang === "ar" ? "تصحيح" : "Grade"}</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {homework.map(h => (
+              <div key={h.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border">
+                <h4 className="font-semibold">{h.title}</h4>
+                <p className="text-xs text-text-light">{h.courseName} • {lang === "ar" ? "تسليم:" : "Due:"} {h.dueDate}</p>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => loadSubs(h.id)} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><IoEye /></button>
+                  <button onClick={() => openEdit("homework", h)} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><FaPencilAlt /></button>
+                  <button onClick={() => handleDelete("homework", h.id)} className="px-3 py-1.5 rounded-lg bg-bg text-red-500 text-sm cursor-pointer border-none"><IoTrash /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ====== REPORTS ======
+  const ReportsTab = () => (
+    <div>
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-lg font-semibold">{lang === "ar" ? "التقارير الشهرية" : "Monthly Reports"} ({reports.length})</h3>
+        <button onClick={() => { setForm({ studentId: students[0]?.id || "", month: "", attendance: 0, grades: "", notes: "" }); openAdd("report"); }} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إضافة تقرير" : "Add Report"}</button>
+      </div>
+      {showModal && modalType === "report" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-[20px] p-6 w-full max-w-lg m-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{lang === "ar" ? "تقرير شهري" : "Monthly Report"}</h3><button onClick={() => setShowModal(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <select value={form.studentId} onChange={e => setForm({ ...form, studentId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required>
+                <option value="">{lang === "ar" ? "اختر الطالب" : "Select Student"}</option>
+                {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <input type="month" value={form.month} onChange={e => setForm({ ...form, month: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+              <input type="number" placeholder={lang === "ar" ? "نسبة الحضور" : "Attendance %"} value={form.attendance} onChange={e => setForm({ ...form, attendance: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              <input placeholder={lang === "ar" ? "الدرجات" : "Grades"} value={form.grades} onChange={e => setForm({ ...form, grades: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              <textarea placeholder={lang === "ar" ? "ملاحظات" : "Notes"} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
+              <button type="submit" className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{lang === "ar" ? "إرسال التقرير" : "Send Report"}</button>
+            </form>
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {reports.map(r => {
+          const student = students.find(s => s.id === r.studentId);
+          return (
+            <div key={r.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border">
+              <h4 className="font-semibold">{student?.name || r.studentId} - {r.month}</h4>
+              <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                <div><span className="text-text-light">{lang === "ar" ? "الحضور:" : "Attendance:"}</span> {r.attendance}%</div>
+                <div><span className="text-text-light">{lang === "ar" ? "الدرجات:" : "Grades:"}</span> {r.grades}</div>
+              </div>
+              {r.notes && <p className="text-sm text-text-light mt-2">{r.notes}</p>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ====== NOTIFICATIONS ======
+  const NotificationsTab = () => (
+    <div>
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-lg font-semibold">{lang === "ar" ? "الإشعارات" : "Notifications"} ({notifications.length})</h3>
+        <button onClick={() => { setForm({ title: "", body: "" }); openAdd("notif"); }} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إرسال إشعار" : "Send Notification"}</button>
+      </div>
+      {showModal && modalType === "notif" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-[20px] p-6 w-full max-w-lg m-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{lang === "ar" ? "إرسال إشعار" : "Send Notification"}</h3><button onClick={() => setShowModal(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <input placeholder={lang === "ar" ? "العنوان" : "Title"} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+              <textarea placeholder={lang === "ar" ? "المحتوى" : "Body"} value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} required />
+              <button type="submit" className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoPaperPlane /> {lang === "ar" ? "إرسال للجميع" : "Send to All"}</button>
+            </form>
+          </div>
+        </div>
+      )}
+      <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border">
+        {notifications.map(n => (
+          <div key={n.id} className="flex justify-between items-start py-3 border-b border-border last:border-b-0">
+            <div>
+              <h4 className="font-semibold text-sm">{n.title}</h4>
+              <p className="text-sm text-text-light">{n.body}</p>
+            </div>
+            <button onClick={() => { deleteNotification(n.id); loadAll(); }} className="text-red-500 cursor-pointer bg-transparent border-none"><IoTrash /></button>
+          </div>
+        ))}
+        {notifications.length === 0 && <p className="text-text-light text-center py-4">{lang === "ar" ? "لا توجد إشعارات" : "No notifications"}</p>}
+      </div>
+    </div>
+  );
+
+  // ====== SETTINGS ======
+  const SettingsTab = () => {
+    const [emailForm, setEmailForm] = useState({ email: "", password: "" });
+    const [passForm, setPassForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    const handleUpdateEmail = async (e: FormEvent) => {
+      e.preventDefault();
+      try {
+        const { updateEmail, reauthenticateWithCredential, EmailAuthProvider } = await import("firebase/auth");
+        const { auth } = await import("@/lib/firebase");
+        const credential = EmailAuthProvider.credential(user!.email!, emailForm.password);
+        await reauthenticateWithCredential(user!, credential);
+        await updateEmail(user!, emailForm.email);
+        alert(lang === "ar" ? "تم تحديث البريد" : "Email updated");
+      } catch (err: any) { alert(err.message); }
+    };
+    const handleUpdatePassword = async (e: FormEvent) => {
+      e.preventDefault();
+      if (passForm.newPassword !== passForm.confirmPassword) { alert(lang === "ar" ? "كلمة المرور غير متطابقة" : "Passwords don't match"); return; }
+      try {
+        const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import("firebase/auth");
+        const { auth } = await import("@/lib/firebase");
+        const credential = EmailAuthProvider.credential(user!.email!, passForm.currentPassword);
+        await reauthenticateWithCredential(user!, credential);
+        await updatePassword(user!, passForm.newPassword);
+        alert(lang === "ar" ? "تم تحديث كلمة المرور" : "Password updated");
+      } catch (err: any) { alert(err.message); }
+    };
+    return (
+      <div className="max-w-lg space-y-8">
+        <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border">
+          <h4 className="font-semibold mb-4">{lang === "ar" ? "تغيير البريد الإلكتروني" : "Change Email"}</h4>
+          <form onSubmit={handleUpdateEmail} className="space-y-4">
+            <input placeholder={lang === "ar" ? "البريد الجديد" : "New Email"} value={emailForm.email} onChange={e => setEmailForm({ ...emailForm, email: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+            <input type="password" placeholder={lang === "ar" ? "كلمة المرور الحالية" : "Current Password"} value={emailForm.password} onChange={e => setEmailForm({ ...emailForm, password: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+            <button type="submit" className="px-6 py-3 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{lang === "ar" ? "تحديث" : "Update"}</button>
+          </form>
+        </div>
+        <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border">
+          <h4 className="font-semibold mb-4">{lang === "ar" ? "تغيير كلمة المرور" : "Change Password"}</h4>
+          <form onSubmit={handleUpdatePassword} className="space-y-4">
+            <input type="password" placeholder={lang === "ar" ? "كلمة المرور الحالية" : "Current Password"} value={passForm.currentPassword} onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+            <input type="password" placeholder={lang === "ar" ? "كلمة المرور الجديدة" : "New Password"} value={passForm.newPassword} onChange={e => setPassForm({ ...passForm, newPassword: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+            <input type="password" placeholder={lang === "ar" ? "تأكيد كلمة المرور" : "Confirm New Password"} value={passForm.confirmPassword} onChange={e => setPassForm({ ...passForm, confirmPassword: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+            <button type="submit" className="px-6 py-3 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{lang === "ar" ? "تحديث" : "Update"}</button>
           </form>
         </div>
       </div>
     );
   };
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case "overview":
-        return (
-          <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-              {[
-                { icon: FaUsers, bg: "bg-primary-light", color: "text-primary", value: String(students.length + 1), label: "totalUsers" },
-                { icon: FaChalkboardTeacher, bg: "bg-[rgba(79,70,229,0.1)]", color: "text-accent", value: "1", label: "teachers" },
-                { icon: FaUserGraduate, bg: "bg-[rgba(245,158,11,0.1)]", color: "text-yellow-600", value: String(students.length), label: "students" },
-                { icon: FaBookOpen, bg: "bg-[rgba(59,130,246,0.1)]", color: "text-blue-600", value: String(courses.length), label: "courses" },
-              ].map((stat) => (
-                <div key={stat.label} className="bg-white rounded-[20px] p-6 shadow-sm border border-border flex items-center gap-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-                  <div className={`w-12 h-12 rounded-xl ${stat.bg} flex items-center justify-center ${stat.color}`}>
-                    <stat.icon className="text-xl" />
-                  </div>
-                  <div>
-                    <strong className="text-2xl font-bold block">{stat.value}</strong>
-                    <span className="text-sm text-text-light">{t(stat.label)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border">
-                <h4 className="text-base font-semibold mb-4">{lang === "ar" ? "آخر الطلاب المسجلين" : "Recent Students"}</h4>
-                <div className="space-y-3">
-                  {students.slice(0, 5).map(s => (
-                    <div key={s.id} className="flex justify-between items-center py-2 border-b border-border last:border-b-0">
-                      <div>
-                        <span className="text-sm font-medium block">{s.name}</span>
-                        <span className="text-xs text-text-lighter">{s.email}</span>
-                      </div>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusBadge(s.status)}`}>{statusText(s.status)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border">
-                <h4 className="text-base font-semibold mb-4">{lang === "ar" ? "آخر الكورسات" : "Recent Courses"}</h4>
-                <div className="space-y-3">
-                  {courses.slice(0, 5).map(c => (
-                    <div key={c.id} className="flex justify-between items-center py-2 border-b border-border last:border-b-0">
-                      <span className="text-sm font-medium">{c.name}</span>
-                      <span className="text-xs text-text-lighter">{c.grade}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        );
-
-      case "students":
-        return (
-          <>
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-semibold">
-                {lang === "ar" ? "إدارة الطلاب" : "Student Management"}
-                <span className="text-sm text-text-light ml-2">({students.length})</span>
-              </h3>
-            </div>
-            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr>
-                    {["name", "email", ...(lang === "ar" ? ["الحالة", "إجراءات"] : ["status", "actions"])].map(h => (
-                      <th key={h} className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider whitespace-nowrap">{h === "name" || h === "email" ? t(h) : h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.length === 0 ? (
-                    <tr><td colSpan={4} className="text-center py-8 text-text-light">{lang === "ar" ? "لا يوجد طلاب بعد" : "No students yet"}</td></tr>
-                  ) : students.map(s => (
-                    <tr key={s.id} className="hover:bg-bg transition-colors">
-                      <td className="px-4 py-3.5 border-b border-border font-medium">{s.name}</td>
-                      <td className="px-4 py-3.5 border-b border-border text-text-light">{s.email}</td>
-                      <td className="px-4 py-3.5 border-b border-border">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusBadge(s.status)}`}>{statusText(s.status)}</span>
-                      </td>
-                      <td className="px-4 py-3.5 border-b border-border">
-                        <div className="flex gap-2">
-                          {s.status === "pending" && (
-                            <button onClick={() => updateStudentStatus(s.id, "active")} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200 transition-all cursor-pointer border-none" title={lang === "ar" ? "قبول" : "Approve"}>
-                              <IoCheckmarkCircle />
-                            </button>
-                          )}
-                          {s.status === "active" && (
-                            <button onClick={() => updateStudentStatus(s.id, "banned")} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs font-medium hover:bg-red-200 transition-all cursor-pointer border-none" title={lang === "ar" ? "حظر" : "Ban"}>
-                              <IoBan />
-                            </button>
-                          )}
-                          {s.status === "banned" && (
-                            <button onClick={() => updateStudentStatus(s.id, "active")} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200 transition-all cursor-pointer border-none" title={lang === "ar" ? "إلغاء الحظر" : "Unban"}>
-                              <IoCheckmarkCircle />
-                            </button>
-                          )}
-                          <button onClick={() => deleteStudent(s.id)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium hover:bg-red-100 hover:text-red-600 transition-all cursor-pointer border-none" title={lang === "ar" ? "حذف" : "Delete"}>
-                            <IoTrash />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        );
-
-      case "courses":
-        return (
-          <>
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-semibold">{lang === "ar" ? "الكورسات" : "Courses"} <span className="text-sm text-text-light ml-2">({courses.length})</span></h3>
-              <button onClick={() => openAddModal("course")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-1px] transition-all duration-300 cursor-pointer border-none">
-                <IoAdd /> {lang === "ar" ? "إضافة كورس" : "Add Course"}
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {courses.length === 0 ? (
-                <div className="col-span-full text-center py-12 text-text-light">{lang === "ar" ? "لا يوجد كورسات بعد" : "No courses yet"}</div>
-              ) : courses.map(c => (
-                <div key={c.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-semibold">{c.name}</h4>
-                      <span className="text-xs text-primary bg-primary-light px-2.5 py-0.5 rounded-full inline-block mt-1">{c.grade}</span>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button onClick={() => openEditModal("course", c)} className="w-8 h-8 rounded-lg bg-bg flex items-center justify-center text-text-light hover:text-primary hover:bg-primary-light transition-all cursor-pointer border-none"><FaPencilAlt className="text-xs" /></button>
-                      <button onClick={() => deleteItem("course", c.id)} className="w-8 h-8 rounded-lg bg-bg flex items-center justify-center text-text-light hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer border-none"><IoTrash /></button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-text-light line-clamp-2">{c.description}</p>
-                </div>
-              ))}
-            </div>
-          </>
-        );
-
-      case "lessons":
-        return (
-          <>
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-semibold">{lang === "ar" ? "الحصص" : "Lessons"} <span className="text-sm text-text-light ml-2">({lessons.length})</span></h3>
-              <button onClick={() => openAddModal("lesson")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-1px] transition-all duration-300 cursor-pointer border-none">
-                <IoAdd /> {lang === "ar" ? "إضافة حصة" : "Add Lesson"}
-              </button>
-            </div>
-            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "العنوان" : "Title"}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "الكورس" : "Course"}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "الترتيب" : "Order"}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "إجراءات" : "Actions"}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lessons.length === 0 ? (
-                    <tr><td colSpan={4} className="text-center py-8 text-text-light">{lang === "ar" ? "لا يوجد حصص بعد" : "No lessons yet"}</td></tr>
-                  ) : lessons.map(l => (
-                    <tr key={l.id} className="hover:bg-bg transition-colors">
-                      <td className="px-4 py-3.5 border-b border-border font-medium">{l.title}</td>
-                      <td className="px-4 py-3.5 border-b border-border text-text-light">{l.courseName || l.courseId}</td>
-                      <td className="px-4 py-3.5 border-b border-border">{l.order || 0}</td>
-                      <td className="px-4 py-3.5 border-b border-border">
-                        <div className="flex gap-2">
-                          <button onClick={() => openEditModal("lesson", l)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg text-text-light text-xs font-medium hover:text-primary hover:bg-primary-light transition-all cursor-pointer border-none"><FaPencilAlt /></button>
-                          <button onClick={() => deleteItem("lesson", l.id)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg text-text-light text-xs font-medium hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer border-none"><IoTrash /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        );
-
-      case "exams":
-        return (
-          <>
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-semibold">{lang === "ar" ? "الامتحانات" : "Exams"} <span className="text-sm text-text-light ml-2">({exams.length})</span></h3>
-              <button onClick={() => openAddModal("exam")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-1px] transition-all duration-300 cursor-pointer border-none">
-                <IoAdd /> {lang === "ar" ? "إضافة امتحان" : "Add Exam"}
-              </button>
-            </div>
-            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "العنوان" : "Title"}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "الكورس" : "Course"}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "عدد الأسئلة" : "Questions"}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "إجراءات" : "Actions"}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {exams.length === 0 ? (
-                    <tr><td colSpan={4} className="text-center py-8 text-text-light">{lang === "ar" ? "لا يوجد امتحانات بعد" : "No exams yet"}</td></tr>
-                  ) : exams.map(e => (
-                    <tr key={e.id} className="hover:bg-bg transition-colors">
-                      <td className="px-4 py-3.5 border-b border-border font-medium">{e.title}</td>
-                      <td className="px-4 py-3.5 border-b border-border text-text-light">{e.courseName || e.courseId}</td>
-                      <td className="px-4 py-3.5 border-b border-border">{(e.questions || "").split("\n").filter(Boolean).length}</td>
-                      <td className="px-4 py-3.5 border-b border-border">
-                        <div className="flex gap-2">
-                          <button onClick={() => openEditModal("exam", e)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg text-text-light text-xs font-medium hover:text-primary hover:bg-primary-light transition-all cursor-pointer border-none"><FaPencilAlt /></button>
-                          <button onClick={() => deleteItem("exam", e.id)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg text-text-light text-xs font-medium hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer border-none"><IoTrash /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        );
-
-      case "homework":
-        return (
-          <>
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-semibold">{lang === "ar" ? "الواجبات" : "Homework"} <span className="text-sm text-text-light ml-2">({homework.length})</span></h3>
-              <button onClick={() => openAddModal("homework")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-1px] transition-all duration-300 cursor-pointer border-none">
-                <IoAdd /> {lang === "ar" ? "إضافة واجب" : "Add Homework"}
-              </button>
-            </div>
-            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "العنوان" : "Title"}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "الكورس" : "Course"}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "تاريخ التسليم" : "Due Date"}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{lang === "ar" ? "إجراءات" : "Actions"}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {homework.length === 0 ? (
-                    <tr><td colSpan={4} className="text-center py-8 text-text-light">{lang === "ar" ? "لا يوجد واجبات بعد" : "No homework yet"}</td></tr>
-                  ) : homework.map(h => (
-                    <tr key={h.id} className="hover:bg-bg transition-colors">
-                      <td className="px-4 py-3.5 border-b border-border font-medium">{h.title}</td>
-                      <td className="px-4 py-3.5 border-b border-border text-text-light">{h.courseName || h.courseId}</td>
-                      <td className="px-4 py-3.5 border-b border-border">{h.dueDate}</td>
-                      <td className="px-4 py-3.5 border-b border-border">
-                        <div className="flex gap-2">
-                          <button onClick={() => openEditModal("homework", h)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg text-text-light text-xs font-medium hover:text-primary hover:bg-primary-light transition-all cursor-pointer border-none"><FaPencilAlt /></button>
-                          <button onClick={() => deleteItem("homework", h.id)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg text-text-light text-xs font-medium hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer border-none"><IoTrash /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        );
-
-      default:
-        return null;
-    }
+  // ====== MODAL ======
+  const Modal = () => {
+    if (!showModal || modalType === "exam" || modalType === "report" || modalType === "notif" || modalType === "wallet") return null;
+    const titleMap = { course: lang === "ar" ? "إضافة/تعديل كورس" : "Add/Edit Course", lesson: lang === "ar" ? "إضافة/تعديل درس" : "Add/Edit Lesson", homework: lang === "ar" ? "إضافة/تعديل واجب" : "Add/Edit Homework", wallet: "", report: "", notif: "" };
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowModal(false)}>
+        <div className="bg-white rounded-[20px] p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{titleMap[modalType]}</h3><button onClick={() => setShowModal(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {modalType === "course" && (
+              <><input placeholder={lang === "ar" ? "اسم الكورس" : "Course Name"} value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+              <input placeholder={lang === "ar" ? "المرحلة" : "Grade"} value={form.grade || ""} onChange={e => setForm({ ...form, grade: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              <textarea placeholder={lang === "ar" ? "الوصف" : "Description"} value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} /></>
+            )}
+            {modalType === "lesson" && (
+              <><input placeholder={lang === "ar" ? "عنوان الدرس" : "Lesson Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+              <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => setForm({ ...form, videoUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
+              <input placeholder={lang === "ar" ? "رابط PDF" : "PDF URL"} value={form.pdfUrl || ""} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              <textarea placeholder={lang === "ar" ? "المحتوى" : "Content"} value={form.content || ""} onChange={e => setForm({ ...form, content: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={4} />
+              <input type="number" placeholder={lang === "ar" ? "الترتيب" : "Order"} value={form.order || 0} onChange={e => setForm({ ...form, order: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              <input type="number" placeholder={lang === "ar" ? "السعر" : "Price"} value={form.price || 0} onChange={e => setForm({ ...form, price: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              <input type="number" placeholder={lang === "ar" ? "حد المشاهدات" : "View Limit"} value={form.viewLimit || 0} onChange={e => setForm({ ...form, viewLimit: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              <textarea placeholder={lang === "ar" ? "كودات الفتح (كود لكل سطر)" : "Access codes (one per line)"} value={form.codes || ""} onChange={e => setForm({ ...form, codes: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} /></>
+            )}
+            {modalType === "homework" && (
+              <><input placeholder={lang === "ar" ? "عنوان الواجب" : "Homework Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+              <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <input type="date" value={form.dueDate || ""} onChange={e => setForm({ ...form, dueDate: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+              <textarea placeholder={lang === "ar" ? "الأسئلة (سؤال لكل سطر)" : "Questions (one per line)"} value={form.questions || ""} onChange={e => setForm({ ...form, questions: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={6} required /></>
+            )}
+            {modalType === "wallet" && (
+              <><select value={form.studentId} onChange={e => setForm({ ...form, studentId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الطالب" : "Select Student"}</option>{students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+              <select value={form.txType} onChange={e => setForm({ ...form, txType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="credit">{lang === "ar" ? "إيداع" : "Credit"}</option><option value="debit">{lang === "ar" ? "خصم" : "Debit"}</option></select>
+              <input type="number" placeholder={lang === "ar" ? "المبلغ" : "Amount"} value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
+              <input placeholder={lang === "ar" ? "الوصف" : "Description"} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" /></>
+            )}
+            <button type="submit" className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">
+              {editId ? (lang === "ar" ? "تحديث" : "Update") : (lang === "ar" ? "إضافة" : "Create")}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="flex min-h-screen bg-bg">
+    <div className="flex min-h-screen bg-bg" dir={lang === "ar" ? "rtl" : "ltr"}>
       <aside className={`fixed md:static inset-y-0 left-0 z-30 w-[260px] bg-[#1F2937] text-white/80 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
         <div className="p-5 border-b border-white/10 flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2.5 font-bold text-base text-white">
-            <IoSchool className="text-primary" />
-            Admin
-          </Link>
+          <Link href="/" className="flex items-center gap-2.5 font-bold text-base text-white"><IoSchool className="text-primary" /> Admin</Link>
         </div>
         <nav className="p-3 flex-1 overflow-y-auto">
-          {[
-            { icon: IoGrid, label: "overview", key: "overview" as TabKey },
-            { icon: FaUsers, label: "users", key: "students" as TabKey },
-            { icon: FaBookOpen, label: "courses", key: "courses" as TabKey },
-            { icon: FaPencilAlt, label: "homework", key: "lessons" as TabKey },
-            { icon: IoDocumentText, label: "assignments", key: "exams" as TabKey },
-            { icon: IoCreate, label: "assignments", key: "homework" as TabKey },
-          ].map((item) => (
-            <a
-              key={item.key}
-              href="#"
-              onClick={(e) => { e.preventDefault(); setActiveTab(item.key); setSidebarOpen(false); }}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 mb-0.5 cursor-pointer ${
-                activeTab === item.key
-                  ? "bg-gradient-to-r from-primary to-accent text-white"
-                  : "text-white/60 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <item.icon className="text-sm w-5 text-center" />
-              <span>{t(item.label)}</span>
+          {sidebarItems.map(item => (
+            <a key={item.key} href="#" onClick={e => { e.preventDefault(); setTab(item.key); setSidebarOpen(false); }}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 mb-0.5 cursor-pointer ${tab === item.key ? "bg-gradient-to-r from-primary to-accent text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}>
+              <item.icon className="text-sm w-5 text-center" /> {item.label}
             </a>
           ))}
-          <a href="#" onClick={(e) => { e.preventDefault(); logout(); router.push("/"); }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-all duration-300 mt-4 cursor-pointer">
-            <IoLogOut className="text-sm w-5 text-center" />
-            <span>{t("logout")}</span>
+          <a href="#" onClick={e => { e.preventDefault(); logout(); router.push("/"); }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-all duration-300 mt-4 cursor-pointer">
+            <IoLogOut className="text-sm w-5 text-center" /> {lang === "ar" ? "تسجيل الخروج" : "Logout"}
           </a>
         </nav>
       </aside>
@@ -615,37 +714,22 @@ export default function AdminDashboard() {
       <div className="flex-1 p-6 md:p-8 min-h-screen">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
-            <button className="md:hidden text-xl text-text" onClick={() => setSidebarOpen(true)}>
-              <IoMenu />
-            </button>
-            <h2 className="text-xl md:text-2xl font-bold">
-              {activeTab === "overview" ? t("adminDash") :
-               activeTab === "students" ? (lang === "ar" ? "إدارة الطلاب" : "Student Management") :
-               activeTab === "courses" ? (lang === "ar" ? "الكورسات" : "Courses") :
-               activeTab === "lessons" ? (lang === "ar" ? "الحصص" : "Lessons") :
-               activeTab === "exams" ? (lang === "ar" ? "الامتحانات" : "Exams") :
-               lang === "ar" ? "الواجبات" : "Homework"}
-            </h2>
+            <button className="md:hidden text-xl text-text" onClick={() => setSidebarOpen(true)}><IoMenu /></button>
+            <h2 className="text-xl md:text-2xl font-bold">{sidebarItems.find(s => s.key === tab)?.label}</h2>
           </div>
           <div className="flex items-center gap-4">
-            <button className="relative w-10 h-10 rounded-xl bg-bg border-none flex items-center justify-center text-text-light cursor-pointer transition-all duration-300 hover:bg-primary-light hover:text-primary">
-              <IoNotifications className="text-lg" />
-              {students.filter(s => s.status === "pending").length > 0 && (
-                <span className="absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-semibold">
-                  {students.filter(s => s.status === "pending").length}
-                </span>
-              )}
-            </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center text-white font-semibold text-sm">
-              {user?.email?.charAt(0).toUpperCase() || "A"}
-            </div>
+            <span className="relative">
+              <IoNotifications className="text-xl text-text-light cursor-pointer" />
+              {pendingStudents.length > 0 && <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-semibold">{pendingStudents.length}</span>}
+            </span>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center text-white font-semibold text-sm">{user?.email?.charAt(0).toUpperCase() || "A"}</div>
           </div>
         </div>
 
-        {renderContent()}
+        {loadingData ? <div className="text-center py-12"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" /></div> : renderTab()}
       </div>
 
-      {renderModal()}
+      <Modal />
     </div>
   );
 }
