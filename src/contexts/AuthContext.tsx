@@ -11,15 +11,19 @@ import {
   signInWithPopup,
   onAuthStateChanged
 } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
+export const ADMIN_EMAIL = "MrsshereenelmairyTHEONLYTOPADMININTHEUDUCATIONALPLATFORM@ADMIN.COM";
+
 type UserRole = "student" | "teacher" | "admin" | null;
+type UserStatus = "pending" | "active" | "banned" | null;
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   userRole: UserRole;
+  userStatus: UserStatus;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, phone: string, role?: UserRole) => Promise<void>;
   logout: () => Promise<void>;
@@ -33,18 +37,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [userStatus, setUserStatus] = useState<UserStatus>(null);
+
+  const syncUserData = async (user: User) => {
+    const docRef = doc(db, "users", user.uid);
+    const docSnap = await getDoc(docRef);
+
+    if (user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          name: "Miss Shereen Elmairy",
+          email: user.email,
+          phone: "",
+          role: "admin",
+          status: "active",
+          createdAt: serverTimestamp(),
+        });
+      } else if (docSnap.data().role !== "admin") {
+        await updateDoc(docRef, { role: "admin", status: "active" });
+      }
+      setUserRole("admin");
+      setUserStatus("active");
+      return;
+    }
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      setUserRole(data.role as UserRole);
+      setUserStatus((data.status as UserStatus) || "active");
+    } else {
+      setUserRole(null);
+      setUserStatus(null);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUserRole(docSnap.data().role as UserRole);
-        }
+        await syncUserData(user);
       } else {
         setUserRole(null);
+        setUserStatus(null);
       }
       setLoading(false);
     });
@@ -56,15 +90,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (email: string, password: string, name: string, phone: string, role: UserRole = "student") => {
+    const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    const finalRole = isAdmin ? "admin" : role;
+    const finalStatus = isAdmin ? "active" : "pending";
+
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await setDoc(doc(db, "users", cred.user.uid), {
       name,
       email,
       phone,
-      role,
+      role: finalRole,
+      status: finalStatus,
       createdAt: serverTimestamp(),
     });
-    setUserRole(role);
+    setUserRole(finalRole as UserRole);
+    setUserStatus(finalStatus as UserStatus);
   };
 
   const logout = async () => {
@@ -81,21 +121,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const docRef = doc(db, "users", cred.user.uid);
     const docSnap = await getDoc(docRef);
     if (!docSnap.exists()) {
+      const email = cred.user.email || "";
+      const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
       await setDoc(docRef, {
         name: cred.user.displayName || "User",
-        email: cred.user.email,
+        email,
         phone: cred.user.phoneNumber || "",
-        role: "student",
+        role: isAdmin ? "admin" : "student",
+        status: isAdmin ? "active" : "pending",
         createdAt: serverTimestamp(),
       });
-      setUserRole("student");
+      setUserRole(isAdmin ? "admin" : "student");
+      setUserStatus(isAdmin ? "active" : "pending");
     } else {
-      setUserRole(docSnap.data().role as UserRole);
+      const data = docSnap.data();
+      setUserRole(data.role as UserRole);
+      setUserStatus((data.status as UserStatus) || "active");
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, userRole, login, register, logout, resetPassword, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, loading, userRole, userStatus, login, register, logout, resetPassword, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

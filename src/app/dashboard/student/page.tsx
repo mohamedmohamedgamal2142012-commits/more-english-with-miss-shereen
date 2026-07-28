@@ -8,7 +8,7 @@ import {
   IoSchool, IoBook, IoCheckmarkCircle, IoStar, IoTime,
   IoGrid, IoStatsChart, IoRibbon, IoCreate, IoNotifications,
   IoCalendar, IoPerson, IoLogOut, IoChevronDown,
-  IoMenu, IoClose
+  IoMenu, IoClose, IoTime, IoWarning
 } from "react-icons/io5";
 import { FaBookOpen, FaPencilAlt, FaComments, FaUserGraduate } from "react-icons/fa";
 import { getTranslation } from "@/lib/i18n";
@@ -40,7 +40,7 @@ const sidebarLinks = [
 export default function StudentDashboard() {
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, loading, userRole } = useAuth();
+  const { user, loading, userRole, userStatus, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -58,6 +58,60 @@ export default function StudentDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (userStatus === "pending") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg px-6">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-6">
+            <IoTime className="text-4xl text-yellow-600" />
+          </div>
+          <h2 className="text-2xl font-bold mb-3">
+            {lang === "ar" ? "بانتظار الموافقة" : "Pending Approval"}
+          </h2>
+          <p className="text-text-light mb-6 leading-relaxed">
+            {lang === "ar"
+              ? "حسابك قيد المراجعة من الإدارة. سيتم تفعيل حسابك فور الموافقة عليه. يرجى التحقق لاحقاً."
+              : "Your account is under review by the administration. It will be activated once approved. Please check back later."}
+          </p>
+          <button
+            onClick={() => { logout(); router.push("/"); }}
+            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-2px] transition-all duration-300 cursor-pointer border-none"
+          >
+            <IoLogOut />
+            {lang === "ar" ? "العودة للرئيسية" : "Back to Home"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (userStatus === "banned") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg px-6">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
+            <IoWarning className="text-4xl text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold mb-3 text-red-600">
+            {lang === "ar" ? "الحساب محظور" : "Account Suspended"}
+          </h2>
+          <p className="text-text-light mb-6 leading-relaxed">
+            {lang === "ar"
+              ? "عذراً، تم حظر حسابك. يرجى التواصل مع الإدارة لمزيد من المعلومات."
+              : "Sorry, your account has been suspended. Please contact the administration for more information."}
+          </p>
+          <button
+            onClick={() => { logout(); router.push("/"); }}
+            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-red-500 to-red-600 text-white shadow-[0_4px_15px_rgba(239,68,68,0.3)] hover:translate-y-[-2px] transition-all duration-300 cursor-pointer border-none"
+          >
+            <IoLogOut />
+            {lang === "ar" ? "العودة للرئيسية" : "Back to Home"}
+          </button>
+        </div>
       </div>
     );
   }
