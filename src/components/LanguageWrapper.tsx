@@ -42,15 +42,11 @@ export default function LanguageWrapper({ children }: LanguageWrapperProps) {
 
   const isDashboard = pathname.startsWith("/dashboard");
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-bg">{children}</div>;
-  }
-
   return (
     <div className="flex flex-col min-h-screen" style={{ fontFamily: lang === "ar" ? "var(--font-cairo), 'Cairo', sans-serif" : "var(--font-poppins), 'Poppins', sans-serif" }}>
-      <Navbar lang={lang} onLanguageChange={handleLanguageChange} />
+      {mounted && <Navbar lang={lang} onLanguageChange={handleLanguageChange} />}
       <main className="flex-1">{children}</main>
-      {!isDashboard && <Footer lang={lang} />}
+      {mounted && !isDashboard && <Footer lang={lang} />}
     </div>
   );
 }
