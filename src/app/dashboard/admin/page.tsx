@@ -28,7 +28,7 @@ import {
 } from "react-icons/io5";
 import { FaUserGraduate, FaUsers, FaBookOpen, FaPencilAlt, FaChalkboardTeacher, FaCreditCard, FaFileAlt, FaRobot, FaGamepad, FaChartBar, FaWhatsapp } from "react-icons/fa";
 
-type ATab = "overview" | "students" | "requests" | "lessons" | "files" | "wallet" | "exams" | "homework" | "reports" | "notifications" | "settings";
+type ATab = "overview" | "students" | "requests" | "courses" | "lessons" | "files" | "wallet" | "exams" | "homework" | "reports" | "notifications" | "settings";
 
 export default function AdminDashboard() {
   const [lang, setLang] = useState<"en" | "ar">("en");
@@ -105,13 +105,12 @@ export default function AdminDashboard() {
       if (editId) await saveLesson(editId, data); else await saveLesson(null, data);
     }
     else if (modalType === "exam") {
-      const questions = form.questionsArr || [];
-      const data = { ...form, questions };
+      const data = { ...form };
       if (editId) await saveExam(editId, data); else await saveExam(null, data);
     }
     else if (modalType === "homework") { if (editId) await saveHomework(editId, form); else await saveHomework(null, form); }
     else if (modalType === "wallet") { await addTransaction(form.studentId, form.txType, Number(form.amount), form.description); }
-    else if (modalType === "report") { await saveReport(form); }
+    else if (modalType === "report") { const s = students.find(x => x.id === form.studentId); await saveReport({ ...form, studentName: s?.name || "" }); }
     else if (modalType === "notif") { await sendNotification({ title: form.title, body: form.body, forStudents: true }); }
     setShowModal(false);
     loadAll();
@@ -143,6 +142,7 @@ export default function AdminDashboard() {
     { key: "overview", icon: IoGrid, label: lang === "ar" ? "نظرة عامة" : "Overview" },
     { key: "students", icon: FaUsers, label: lang === "ar" ? "الطلاب" : "Students" },
     { key: "requests", icon: IoPeople, label: lang === "ar" ? "طلبات التسجيل" : "Requests" },
+    { key: "courses", icon: FaBookOpen, label: lang === "ar" ? "الكورسات" : "Courses" },
     { key: "lessons", icon: IoBook, label: lang === "ar" ? "الدروس" : "Lessons" },
     { key: "files", icon: FaFileAlt, label: lang === "ar" ? "الملفات" : "Files" },
     { key: "wallet", icon: IoWallet, label: lang === "ar" ? "المحفظة" : "Wallet" },
@@ -159,6 +159,7 @@ export default function AdminDashboard() {
       case "overview": return <OverviewTab />;
       case "students": return <StudentsTab />;
       case "requests": return <RequestsTab />;
+      case "courses": return <CoursesTab />;
       case "lessons": return <LessonsTab />;
       case "files": return <FilesTab />;
       case "wallet": return <WalletTab />;
@@ -215,10 +216,26 @@ export default function AdminDashboard() {
   };
 
   // ====== STUDENTS ======
+  const [editingStudent, setEditingStudent] = useState<AppUser | null>(null);
+  const [editStudentForm, setEditStudentForm] = useState<any>({});
   const StudentsTab = () => {
     const filtered = students.filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.email.toLowerCase().includes(search.toLowerCase()));
     return (
       <div>
+        {editingStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditingStudent(null)}>
+            <div className="bg-white rounded-[20px] p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{lang === "ar" ? "تعديل بيانات الطالب" : "Edit Student"}</h3><button onClick={() => setEditingStudent(null)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
+              <div className="space-y-4">
+                {["name", "phone", "school", "department", "governorate", "parentName", "parentPhone"].map(key => (
+                  <input key={key} placeholder={key} value={editStudentForm[key] || ""} onChange={e => setEditStudentForm({ ...editStudentForm, [key]: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+                ))}
+                <input type="number" placeholder={lang === "ar" ? "المحفظة" : "Wallet"} value={editStudentForm.wallet || 0} onChange={e => setEditStudentForm({ ...editStudentForm, wallet: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+                <button type="button" onClick={async () => { await updateUserProfile(editingStudent.id, editStudentForm); setEditingStudent(null); loadAll(); }} className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{lang === "ar" ? "حفظ التغييرات" : "Save Changes"}</button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
           <div className="relative flex-1 max-w-xs">
             <IoSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light" />
@@ -243,8 +260,9 @@ export default function AdminDashboard() {
                       {s.status === "pending" && <button onClick={() => { updateUserStatus(s.id, "active"); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs cursor-pointer border-none" title="Approve"><IoCheckmarkCircle /></button>}
                       {s.status === "active" && <button onClick={() => { updateUserStatus(s.id, "banned"); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs cursor-pointer border-none" title="Ban"><IoBan /></button>}
                       {s.status === "banned" && <button onClick={() => { updateUserStatus(s.id, "active"); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs cursor-pointer border-none" title="Unban"><IoCheckmarkCircle /></button>}
+                      <button onClick={() => { setEditingStudent(s); setEditStudentForm({ name: s.name, phone: s.phone, school: s.school, department: s.department, governorate: s.governorate, parentName: s.parentName, parentPhone: s.parentPhone, wallet: s.wallet }); }} className="px-2 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs cursor-pointer border-none" title="Edit"><FaPencilAlt /></button>
                       <button onClick={() => { deleteUser(s.id); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs cursor-pointer border-none" title="Delete"><IoTrash /></button>
-                      <button onClick={() => { setForm({ studentId: s.id, txType: "credit", amount: 0, description: "" }); openAdd("wallet"); }} className="px-2 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs cursor-pointer border-none" title="Add Wallet"><IoWallet /></button>
+                      <button onClick={() => { setWalletForm({ studentId: s.id, txType: "credit", amount: 0, description: "" }); setShowWalletModal(true); }} className="px-2 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs cursor-pointer border-none" title="Add Wallet"><IoWallet /></button>
                       {s.phone && <a href={`https://wa.me/${s.phone.replace(/^0/, "2")}`} target="_blank" className="px-2 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs inline-flex items-center cursor-pointer"><FaWhatsapp /></a>}
                     </div>
                   </td>
@@ -277,6 +295,29 @@ export default function AdminDashboard() {
           </div>
         ))}
         {pendingStudents.length === 0 && <div className="col-span-full text-center py-12 text-text-light">{lang === "ar" ? "لا توجد طلبات معلقة" : "No pending requests"}</div>}
+      </div>
+    </div>
+  );
+
+  // ====== COURSES ======
+  const CoursesTab = () => (
+    <div>
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-lg font-semibold">{lang === "ar" ? "الكورسات" : "Courses"} ({courses.length})</h3>
+        <button onClick={() => openAdd("course")} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إضافة كورس" : "Add Course"}</button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {courses.map(c => (
+          <div key={c.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border">
+            <h4 className="font-semibold">{c.name}</h4>
+            <p className="text-xs text-text-light mt-1">{c.grade} — {c.description?.slice(0, 60)}</p>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => openEdit("course", c)} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><FaPencilAlt /></button>
+              <button onClick={() => handleDelete("course", c.id)} className="px-3 py-1.5 rounded-lg bg-bg text-red-500 text-sm cursor-pointer border-none"><IoTrash /></button>
+            </div>
+          </div>
+        ))}
+        {courses.length === 0 && <div className="col-span-full text-center py-12 text-text-light">{lang === "ar" ? "لا توجد كورسات" : "No courses"}</div>}
       </div>
     </div>
   );
@@ -357,12 +398,34 @@ export default function AdminDashboard() {
   );
 
   // ====== WALLET ======
+  const [walletForm, setWalletForm] = useState({ studentId: "", txType: "credit" as "credit" | "debit", amount: 0, description: "" });
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const WalletTab = () => (
     <div>
       <div className="flex justify-between items-center mb-5">
         <h3 className="text-lg font-semibold">{lang === "ar" ? "المحفظة" : "Wallet"}</h3>
-        <button onClick={() => { setForm({ studentId: students[0]?.id || "", txType: "credit", amount: 0, description: "" }); openAdd("wallet"); }} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إضافة معاملة" : "Add Transaction"}</button>
+        <button onClick={() => { setWalletForm({ studentId: students[0]?.id || "", txType: "credit", amount: 0, description: "" }); setShowWalletModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إضافة معاملة" : "Add Transaction"}</button>
       </div>
+      {showWalletModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowWalletModal(false)}>
+          <div className="bg-white rounded-[20px] p-6 w-full max-w-lg m-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{lang === "ar" ? "إضافة معاملة مالية" : "Add Transaction"}</h3><button onClick={() => setShowWalletModal(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
+            <div className="space-y-4">
+              <select value={walletForm.studentId} onChange={e => setWalletForm({ ...walletForm, studentId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required>
+                <option value="">{lang === "ar" ? "اختر الطالب" : "Select Student"}</option>
+                {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <select value={walletForm.txType} onChange={e => setWalletForm({ ...walletForm, txType: e.target.value as any })} className="w-full px-4 py-3 border border-border rounded-xl text-sm">
+                <option value="credit">{lang === "ar" ? "إيداع" : "Credit"}</option>
+                <option value="debit">{lang === "ar" ? "خصم" : "Debit"}</option>
+              </select>
+              <input type="number" placeholder={lang === "ar" ? "المبلغ" : "Amount"} value={walletForm.amount || ""} onChange={e => setWalletForm({ ...walletForm, amount: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" min={1} required />
+              <textarea placeholder={lang === "ar" ? "الوصف" : "Description"} value={walletForm.description} onChange={e => setWalletForm({ ...walletForm, description: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={2} required />
+              <button type="button" onClick={async () => { await addTransaction(walletForm.studentId, walletForm.txType, walletForm.amount, walletForm.description); setShowWalletModal(false); loadAll(); }} className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{lang === "ar" ? "إضافة" : "Add"}</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead><tr>{[lang === "ar" ? "الطالب" : "student", lang === "ar" ? "النوع" : "type", lang === "ar" ? "المبلغ" : "amount", lang === "ar" ? "الوصف" : "description", lang === "ar" ? "التاريخ" : "date"].map(h => <th key={h} className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{h}</th>)}</tr></thead>
@@ -404,7 +467,7 @@ export default function AdminDashboard() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowModal(false)}>
             <div className="bg-white rounded-[20px] p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{lang === "ar" ? "إضافة/تعديل امتحان" : "Add/Edit Exam"}</h3><button onClick={() => setShowModal(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
-              <form onSubmit={(e) => { e.preventDefault(); setForm({ ...form, questions: examQuestions }); handleSubmit(e); }} className="space-y-4">
+              <div className="space-y-4">
                 <input placeholder={lang === "ar" ? "عنوان الامتحان" : "Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
                 <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required>
                   <option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>
@@ -433,8 +496,8 @@ export default function AdminDashboard() {
                   <input placeholder={lang === "ar" ? "الإجابة الصحيحة" : "Correct Answer"} value={qForm.correctAnswer} onChange={e => setQForm({ ...qForm, correctAnswer: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm mt-2" />
                   <button type="button" onClick={addQ} className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-sm cursor-pointer border-none">{lang === "ar" ? "إضافة سؤال" : "Add Question"}</button>
                 </div>
-                <button type="submit" className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{editId ? (lang === "ar" ? "تحديث" : "Update") : (lang === "ar" ? "إنشاء الامتحان" : "Create Exam")}</button>
-              </form>
+                <button type="button" onClick={async () => { const data = { ...form, questions: examQuestions }; if (editId) { await saveExam(editId, data); } else { await saveExam(null, data); } setShowModal(false); loadAll(); }} className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{editId ? (lang === "ar" ? "تحديث" : "Update") : (lang === "ar" ? "إنشاء الامتحان" : "Create Exam")}</button>
+              </div>
             </div>
           </div>
         )}
@@ -479,11 +542,16 @@ export default function AdminDashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-semibold">{student?.name || sub.studentId}</h4>
-                        <p className="text-xs text-text-light">{sub.files?.length || 0} {lang === "ar" ? "ملف" : "files"}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {sub.files?.map((url, i) => (
+                            <a key={i} href={url} target="_blank" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg text-xs text-primary cursor-pointer"><IoEye /> {lang === "ar" ? "ملف" : "File"} {i + 1}</a>
+                          ))}
+                        </div>
                       </div>
                       {sub.grade !== undefined ? (
                         <div className="text-right">
                           <span className="text-lg font-bold text-primary">{sub.grade}</span>
+                          {sub.reward ? <p className="text-xs text-green-600">+{sub.reward} pts</p> : null}
                           <p className="text-xs text-text-light">{sub.annotation}</p>
                         </div>
                       ) : (
@@ -547,7 +615,7 @@ export default function AdminDashboard() {
           const student = students.find(s => s.id === r.studentId);
           return (
             <div key={r.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border">
-              <h4 className="font-semibold">{student?.name || r.studentId} - {r.month}</h4>
+              <h4 className="font-semibold">{r.studentName || student?.name || r.studentId} - {r.month}</h4>
               <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
                 <div><span className="text-text-light">{lang === "ar" ? "الحضور:" : "Attendance:"}</span> {r.attendance}%</div>
                 <div><span className="text-text-light">{lang === "ar" ? "الدرجات:" : "Grades:"}</span> {r.grades}</div>
