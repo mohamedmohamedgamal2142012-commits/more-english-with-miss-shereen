@@ -74,9 +74,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
-      if (user) {
-        await syncUserData(user);
-      } else {
+      try {
+        if (user) {
+          await syncUserData(user);
+        } else {
+          setUserRole(null);
+          setUserStatus(null);
+        }
+      } catch (err) {
+        console.error("Auth sync error:", err);
         setUserRole(null);
         setUserStatus(null);
       }

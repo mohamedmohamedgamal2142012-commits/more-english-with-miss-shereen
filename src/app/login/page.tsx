@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, signInWithGoogle, userRole, user } = useAuth();
+  const { login, signInWithGoogle, loading: authLoading, userRole, user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -27,6 +27,8 @@ export default function LoginPage() {
       router.push(`/dashboard/${role}`);
     }
   }, [user, userRole, router]);
+
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-bg"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   const t = (key: string) => getTranslation(lang, key);
 
