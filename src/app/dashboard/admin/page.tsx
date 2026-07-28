@@ -75,14 +75,16 @@ export default function AdminDashboard() {
 
   const loadAll = async () => {
     setLoadingData(true);
-    const [s, p, c, l, e, er, h, f, tx, r, n] = await Promise.all([
-      fetchStudents(), fetchPendingStudents(), fetchCourses(), fetchLessons(),
-      fetchExams(), fetchExamResults(), fetchHomework(), fetchFiles(),
-      fetchTransactions(), fetchReports(), fetchNotifications()
-    ]);
-    setStudents(s); setPendingStudents(p); setCourses(c); setLessons(l);
-    setExams(e); setExamResults(er); setHomework(h); setFiles(f);
-    setTransactions(tx); setReports(r); setNotifications(n);
+    try {
+      const [s, p, c, l, e, er, h, f, tx, r, n] = await Promise.all([
+        fetchStudents(), fetchPendingStudents(), fetchCourses(), fetchLessons(),
+        fetchExams(), fetchExamResults(), fetchHomework(), fetchFiles(),
+        fetchTransactions(), fetchReports(), fetchNotifications()
+      ]);
+      setStudents(s); setPendingStudents(p); setCourses(c); setLessons(l);
+      setExams(e); setExamResults(er); setHomework(h); setFiles(f);
+      setTransactions(tx); setReports(r); setNotifications(n);
+    } catch (err) { console.error("loadAll error:", err); }
     setLoadingData(false);
   };
 
