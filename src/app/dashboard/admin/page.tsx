@@ -359,7 +359,7 @@ const WalletTab = memo(function WalletTab(p: AdminTabProps) {
 
 // ====== EXAMS ======
 const ExamsTab = memo(function ExamsTab(p: AdminTabProps) {
-  const { lang, exams, courses, showModal, setShowModal, modalType, form, setForm, editId, loadAll, openAdd } = p;
+  const { lang, exams, courses, showModal, setShowModal, modalType, form, setForm, editId, loadAll, openAdd, openEdit, handleDelete } = p;
   const [examQuestions, setExamQuestions] = useState<{ id: string; type: string; question: string; options: string[]; correctAnswer: string; points: number }[]>([]);
   const [qForm, setQForm] = useState({ type: "mcq", question: "", options: "", correctAnswer: "", points: 1 });
   const addQ = () => {
@@ -498,7 +498,7 @@ const HomeworkTab = memo(function HomeworkTab(p: AdminTabProps) {
 
 // ====== REPORTS ======
 const ReportsTab = memo(function ReportsTab(p: AdminTabProps) {
-  const { lang, reports, students, showModal, setShowModal, modalType, form, setForm, handleSubmit, loadAll } = p;
+  const { lang, reports, students, showModal, setShowModal, modalType, form, setForm, handleSubmit, loadAll, openAdd } = p;
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
@@ -544,7 +544,7 @@ const ReportsTab = memo(function ReportsTab(p: AdminTabProps) {
 
 // ====== NOTIFICATIONS ======
 const NotificationsTab = memo(function NotificationsTab(p: AdminTabProps) {
-  const { lang, notifications, showModal, setShowModal, modalType, form, setForm, handleSubmit, loadAll } = p;
+  const { lang, notifications, showModal, setShowModal, modalType, form, setForm, handleSubmit, loadAll, openAdd } = p;
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
@@ -632,7 +632,7 @@ const SettingsTab = memo(function SettingsTab(p: AdminTabProps) {
 
 // ====== MODAL ======
 const Modal = memo(function Modal(p: AdminTabProps) {
-  const { showModal, setShowModal, modalType, lang, form, setForm, editId, courses, handleSubmit } = p;
+  const { showModal, setShowModal, modalType, lang, form, setForm, editId, courses, handleSubmit, openAdd } = p;
   if (!showModal || modalType === "exam" || modalType === "report" || modalType === "notif" || modalType === "wallet") return null;
   const titleMap = { course: lang === "ar" ? "إضافة/تعديل كورس" : "Add/Edit Course", lesson: lang === "ar" ? "إضافة/تعديل درس" : "Add/Edit Lesson", homework: lang === "ar" ? "إضافة/تعديل واجب" : "Add/Edit Homework" };
   return (
