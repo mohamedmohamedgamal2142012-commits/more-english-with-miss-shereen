@@ -646,7 +646,7 @@ export default function AdminDashboard() {
   // ====== MODAL ======
   const Modal = () => {
     if (!showModal || modalType === "exam" || modalType === "report" || modalType === "notif" || modalType === "wallet") return null;
-    const titleMap = { course: lang === "ar" ? "إضافة/تعديل كورس" : "Add/Edit Course", lesson: lang === "ar" ? "إضافة/تعديل درس" : "Add/Edit Lesson", homework: lang === "ar" ? "إضافة/تعديل واجب" : "Add/Edit Homework", wallet: "", report: "", notif: "" };
+    const titleMap = { course: lang === "ar" ? "إضافة/تعديل كورس" : "Add/Edit Course", lesson: lang === "ar" ? "إضافة/تعديل درس" : "Add/Edit Lesson", homework: lang === "ar" ? "إضافة/تعديل واجب" : "Add/Edit Homework" };
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowModal(false)}>
         <div className="bg-white rounded-[20px] p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
@@ -675,12 +675,7 @@ export default function AdminDashboard() {
               <input type="date" value={form.dueDate || ""} onChange={e => setForm({ ...form, dueDate: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
               <textarea placeholder={lang === "ar" ? "الأسئلة (سؤال لكل سطر)" : "Questions (one per line)"} value={form.questions || ""} onChange={e => setForm({ ...form, questions: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={6} required /></>
             )}
-            {modalType === "wallet" && (
-              <><select value={form.studentId} onChange={e => setForm({ ...form, studentId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الطالب" : "Select Student"}</option>{students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-              <select value={form.txType} onChange={e => setForm({ ...form, txType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="credit">{lang === "ar" ? "إيداع" : "Credit"}</option><option value="debit">{lang === "ar" ? "خصم" : "Debit"}</option></select>
-              <input type="number" placeholder={lang === "ar" ? "المبلغ" : "Amount"} value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-              <input placeholder={lang === "ar" ? "الوصف" : "Description"} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" /></>
-            )}
+
             <button type="submit" className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">
               {editId ? (lang === "ar" ? "تحديث" : "Update") : (lang === "ar" ? "إضافة" : "Create")}
             </button>
