@@ -81,14 +81,13 @@ export default function StudentDashboard() {
 
   const loadData = async () => {
     setLoadingData(true);
-    try {
-      const [l, e, h, f, t, r, er, c] = await Promise.all([
-        fetchLessons(), fetchExams(), fetchHomework(), fetchFiles(),
-        fetchTransactions(user?.uid), fetchReports(user?.uid), fetchExamResults(user?.uid), fetchCourses()
-      ]);
-      setLessons(l); setExams(e); setHomework(h); setFiles(f);
-      setTransactions(t); setReports(r); setExamResults(er); setCourses(c);
-    } catch (err) { console.error("loadData error:", err); }
+    const safe = <T,>(p: Promise<T>): Promise<T> => p.catch(e => { console.error(e); return [] as any; });
+    const [l, e, h, f, t, r, er, c] = await Promise.all([
+      safe(fetchLessons()), safe(fetchExams()), safe(fetchHomework()), safe(fetchFiles()),
+      safe(fetchTransactions(user?.uid)), safe(fetchReports(user?.uid)), safe(fetchExamResults(user?.uid)), safe(fetchCourses())
+    ]);
+    setLessons(l); setExams(e); setHomework(h); setFiles(f);
+    setTransactions(t); setReports(r); setExamResults(er); setCourses(c);
     setLoadingData(false);
   };
 

@@ -11,15 +11,15 @@ import type {
 
 // === Users ===
 export async function fetchStudents() {
-  const q = query(collection(db, "users"), where("role", "==", "student"), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as AppUser));
+  const snap = await getDocs(collection(db, "users"));
+  const list = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as AppUser));
+  return list.filter(u => u.role === "student").sort((a, b) => ((b.createdAt as any)?.toDate?.() || 0) - ((a.createdAt as any)?.toDate?.() || 0));
 }
 
 export async function fetchPendingStudents() {
-  const q = query(collection(db, "users"), where("role", "==", "student"), where("status", "==", "pending"), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as AppUser));
+  const snap = await getDocs(collection(db, "users"));
+  const list = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as AppUser));
+  return list.filter(u => u.role === "student" && u.status === "pending").sort((a, b) => ((b.createdAt as any)?.toDate?.() || 0) - ((a.createdAt as any)?.toDate?.() || 0));
 }
 
 export async function updateUserStatus(userId: string, status: string) {
@@ -132,7 +132,7 @@ export async function submitExamResult(data: Omit<ExamResult, "id">) {
 export async function fetchExamResults(studentId?: string) {
   let q: any;
   if (studentId) {
-    q = query(collection(db, "exam-results"), where("studentId", "==", studentId), orderBy("submittedAt", "desc"));
+    q = query(collection(db, "exam-results"), where("studentId", "==", studentId));
   } else {
     q = query(collection(db, "exam-results"), orderBy("submittedAt", "desc"));
   }
@@ -219,7 +219,7 @@ export async function uploadFile(file: File, path: string) {
 export async function fetchTransactions(studentId?: string) {
   let q: any;
   if (studentId) {
-    q = query(collection(db, "wallet-transactions"), where("studentId", "==", studentId), orderBy("createdAt", "desc"));
+    q = query(collection(db, "wallet-transactions"), where("studentId", "==", studentId));
   } else {
     q = query(collection(db, "wallet-transactions"), orderBy("createdAt", "desc"));
   }
@@ -242,7 +242,7 @@ export async function addTransaction(studentId: string, type: "credit" | "debit"
 export async function fetchReports(studentId?: string) {
   let q: any;
   if (studentId) {
-    q = query(collection(db, "reports"), where("studentId", "==", studentId), orderBy("createdAt", "desc"));
+    q = query(collection(db, "reports"), where("studentId", "==", studentId));
   } else {
     q = query(collection(db, "reports"), orderBy("createdAt", "desc"));
   }
@@ -281,16 +281,17 @@ export async function saveGameScore(data: Partial<GameScore>) {
 }
 
 export async function fetchLeaderboard() {
-  const q = query(collection(db, "users"), where("role", "==", "student"), orderBy("points", "desc"), limit(50));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, name: d.data().name, points: d.data().points || 0 } as any));
+  const snap = await getDocs(collection(db, "users"));
+  const list = snap.docs.map(d => ({ id: d.id, name: d.data().name, points: d.data().points || 0 } as any));
+  return list.filter((u: any) => u.name).sort((a: any, b: any) => b.points - a.points).slice(0, 50);
 }
 
 // === Chat ===
 export async function fetchMessages(channelId: string) {
-  const q = query(collection(db, "chat-messages"), where("channelId", "==", channelId), orderBy("createdAt", "asc"), limit(100));
+  const q = query(collection(db, "chat-messages"), where("channelId", "==", channelId));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as ChatMessage));
+  const list = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as ChatMessage));
+  return list.sort((a, b) => ((a.createdAt as any)?.toDate?.() || 0) - ((b.createdAt as any)?.toDate?.() || 0)).slice(-100);
 }
 
 export async function sendMessage(data: Partial<ChatMessage>) {

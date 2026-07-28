@@ -75,16 +75,15 @@ export default function AdminDashboard() {
 
   const loadAll = async () => {
     setLoadingData(true);
-    try {
-      const [s, p, c, l, e, er, h, f, tx, r, n] = await Promise.all([
-        fetchStudents(), fetchPendingStudents(), fetchCourses(), fetchLessons(),
-        fetchExams(), fetchExamResults(), fetchHomework(), fetchFiles(),
-        fetchTransactions(), fetchReports(), fetchNotifications()
-      ]);
-      setStudents(s); setPendingStudents(p); setCourses(c); setLessons(l);
-      setExams(e); setExamResults(er); setHomework(h); setFiles(f);
-      setTransactions(tx); setReports(r); setNotifications(n);
-    } catch (err) { console.error("loadAll error:", err); }
+    const safe = <T,>(p: Promise<T>): Promise<T> => p.catch(e => { console.error(e); return [] as any; });
+    const [s, p, c, l, e, er, h, f, tx, r, n] = await Promise.all([
+      safe(fetchStudents()), safe(fetchPendingStudents()), safe(fetchCourses()), safe(fetchLessons()),
+      safe(fetchExams()), safe(fetchExamResults()), safe(fetchHomework()), safe(fetchFiles()),
+      safe(fetchTransactions()), safe(fetchReports()), safe(fetchNotifications())
+    ]);
+    setStudents(s); setPendingStudents(p); setCourses(c); setLessons(l);
+    setExams(e); setExamResults(er); setHomework(h); setFiles(f);
+    setTransactions(tx); setReports(r); setNotifications(n);
     setLoadingData(false);
   };
 
