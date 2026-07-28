@@ -214,6 +214,7 @@ const CoursesTab = memo(function CoursesTab(p: AdminTabProps) {
           <div key={c.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border">
             <h4 className="font-semibold">{c.name}</h4>
             <p className="text-xs text-text-light mt-1">{c.grade} — {c.description?.slice(0, 60)}</p>
+            <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{c.courseType === "video" ? (lang === "ar" ? "فيديو" : "Video") : (lang === "ar" ? "دروس نصية" : "Text Lessons")}</span>
             <div className="flex gap-2 mt-3">
               <button onClick={() => openEdit("course", c)} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><FaPencilAlt /></button>
               <button onClick={() => handleDelete("course", c.id)} className="px-3 py-1.5 rounded-lg bg-bg text-red-500 text-sm cursor-pointer border-none"><IoTrash /></button>
@@ -252,6 +253,10 @@ const LessonsTab = memo(function LessonsTab(p: AdminTabProps) {
             <div key={l.id} className="bg-white rounded-[20px] p-4 shadow-sm border border-border">
               <h4 className="font-semibold">{l.title}</h4>
               <p className="text-xs text-text-light mt-1">{l.courseName} • {l.viewers ? Object.keys(l.viewers).length : 0} views</p>
+              <div className="flex gap-2 mt-2">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{l.lessonType === "video" ? (lang === "ar" ? "فيديو" : "Video") : (lang === "ar" ? "نصي" : "Text")}</span>
+                {l.price > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">{l.price} {lang === "ar" ? "ج.م" : "EGP"}</span>}
+              </div>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => setPlaying(l)} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><IoEye /></button>
                 <button onClick={() => openEdit("lesson", { ...l, codes: l.codes?.join("\n") || "" })} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><FaPencilAlt /></button>
@@ -643,11 +648,13 @@ const Modal = memo(function Modal(p: AdminTabProps) {
           {modalType === "course" && (
             <><input placeholder={lang === "ar" ? "اسم الكورس" : "Course Name"} value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
             <input placeholder={lang === "ar" ? "المرحلة" : "Grade"} value={form.grade || ""} onChange={e => setForm({ ...form, grade: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+            <select value={form.courseType || "lessons"} onChange={e => setForm({ ...form, courseType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="lessons">{lang === "ar" ? "دروس نصية" : "Text Lessons"}</option><option value="video">{lang === "ar" ? "فيديو" : "Video Course"}</option></select>
             <textarea placeholder={lang === "ar" ? "الوصف" : "Description"} value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} /></>
           )}
           {modalType === "lesson" && (
             <><input placeholder={lang === "ar" ? "عنوان الدرس" : "Lesson Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
             <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            <select value={form.lessonType || "text"} onChange={e => setForm({ ...form, lessonType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="text">{lang === "ar" ? "درس نصي" : "Text Lesson"}</option><option value="video">{lang === "ar" ? "درس فيديو" : "Video Lesson"}</option></select>
             <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => setForm({ ...form, videoUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
             <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
             <input placeholder={lang === "ar" ? "رابط PDF" : "PDF URL"} value={form.pdfUrl || ""} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />

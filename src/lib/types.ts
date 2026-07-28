@@ -33,6 +33,7 @@ export interface Lesson {
   content: string;
   order: number;
   price: number;
+  lessonType: "video" | "text";
   codes: string[];
   viewLimit: number;
   viewers: { [uid: string]: number };
@@ -44,6 +45,7 @@ export interface Course {
   name: string;
   grade: string;
   description: string;
+  courseType: "video" | "lessons";
   createdAt: any;
 }
 
