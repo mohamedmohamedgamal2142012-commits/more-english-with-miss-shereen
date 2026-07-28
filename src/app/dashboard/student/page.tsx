@@ -97,6 +97,10 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId }: LessonsTa
         <div>
           <button onClick={() => setPlaying(null)} className="flex items-center gap-2 text-sm text-primary mb-4 cursor-pointer bg-transparent border-none"><IoArrowBack /> {lang === "ar" ? "عودة" : "Back"}</button>
           <h4 className="text-xl font-bold mb-3">{playing.title}</h4>
+          <div className="flex gap-2 mb-3">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{playing.lessonType === "video" ? (lang === "ar" ? "فيديو" : "Video") : (lang === "ar" ? "نصي" : "Text")}</span>
+            {playing.price > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">{playing.price} {lang === "ar" ? "ج.م" : "EGP"}</span>}
+          </div>
           {playing.videoUrl && (
             <div className="aspect-video bg-black rounded-xl overflow-hidden mb-4">
               <iframe src={playing.videoUrl.replace("watch?v=", "embed/")} className="w-full h-full" allowFullScreen />
@@ -115,6 +119,10 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId }: LessonsTa
               </div>
               <div className="p-4">
                 <span className="text-xs text-primary bg-primary-light px-2 py-0.5 rounded-full">{l.courseName}</span>
+                <div className="flex gap-2 mt-2">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{l.lessonType === "video" ? (lang === "ar" ? "فيديو" : "Video") : (lang === "ar" ? "نصي" : "Text")}</span>
+                  {l.price > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">{l.price} {lang === "ar" ? "ج.م" : "EGP"}</span>}
+                </div>
                 <h4 className="font-semibold mt-2 text-sm">{l.title}</h4>
                 <p className="text-xs text-text-light mt-1">{lang === "ar" ? `المشاهدات: ${userId ? l.viewers?.[userId] || 0 : 0}` : `Views: ${userId ? l.viewers?.[userId] || 0 : 0}`}</p>
                 <button onClick={async () => { await incrementLessonView(l.id, userId!); setPlaying(l); }} className="mt-3 w-full px-3 py-2 rounded-full text-xs font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{lang === "ar" ? "مشاهدة" : "Watch"}</button>
