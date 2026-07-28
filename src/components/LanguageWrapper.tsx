@@ -44,9 +44,9 @@ export default function LanguageWrapper({ children }: LanguageWrapperProps) {
 
   return (
     <div className="flex flex-col min-h-screen" style={{ fontFamily: lang === "ar" ? "var(--font-cairo), 'Cairo', sans-serif" : "var(--font-poppins), 'Poppins', sans-serif" }}>
-      {mounted && <Navbar lang={lang} onLanguageChange={handleLanguageChange} />}
+      <Navbar lang={lang} onLanguageChange={handleLanguageChange} />
       <main className="flex-1">{children}</main>
-      {mounted && !isDashboard && <Footer lang={lang} />}
+      {!isDashboard && <Footer lang={lang} />}
     </div>
   );
 }

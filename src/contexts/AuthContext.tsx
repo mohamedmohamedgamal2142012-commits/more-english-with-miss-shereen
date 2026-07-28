@@ -72,9 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 8000);
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      clearTimeout(timeout);
       setUser(user);
       try {
         if (user) {
@@ -90,7 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setLoading(false);
     });
-    return () => { clearTimeout(timeout); unsubscribe(); };
+    const safetyTimeout = setTimeout(() => setLoading(false), 5000);
+    return () => { clearTimeout(safetyTimeout); unsubscribe(); };
   }, []);
 
   const login = async (email: string, password: string) => {
