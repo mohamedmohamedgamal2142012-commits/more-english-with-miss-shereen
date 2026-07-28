@@ -46,6 +46,8 @@ export interface Course {
   grade: string;
   description: string;
   courseType: "video" | "lessons";
+  videoUrl?: string;
+  embedCode?: string;
   createdAt: any;
 }
 
