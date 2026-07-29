@@ -743,7 +743,7 @@ const Modal = memo(function Modal(p: AdminTabProps) {
             <><input placeholder={lang === "ar" ? "عنوان الدرس" : "Lesson Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
             <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
              <select value={form.lessonType || "text"} onChange={e => setForm({ ...form, lessonType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="text">{lang === "ar" ? "درس نصي" : "Text Lesson"}</option><option value="video">{lang === "ar" ? "درس فيديو" : "Video Lesson"}</option></select>
-             <input type="file" accept="image/png,image/jpeg" onChange={e => { const f = e.target.files?.[0]; if (f) { if (!["image/png","image/jpeg"].includes(f.type)) { alert(lang === "ar" ? "الصيغة غير مدعومة (PNG/JPG فقط)" : "Unsupported format (PNG/JPG only)"); e.target.value = ""; return; } if (f.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); e.target.value = ""; return; } setForm({ ...form, thumbnail: f }); })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+             <input type="file" accept="image/png,image/jpeg" onChange={e => { const f = e.target.files?.[0]; if (f) { if (!["image/png","image/jpeg"].includes(f.type)) { alert(lang === "ar" ? "الصيغة غير مدعومة (PNG/JPG فقط)" : "Unsupported format (PNG/JPG only)"); e.target.value = ""; return; } if (f.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); e.target.value = ""; return; } setForm({ ...form, thumbnail: f }); }}} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
              {form.thumbnail && typeof form.thumbnail === "string" && <img src={form.thumbnail} className="w-full h-32 object-cover rounded-xl" alt="thumbnail" />}
              <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => { const v = e.target.value; let embed = form.embedCode; if (v.includes("youtube.com/watch")) { const id = v.split("v=")[1]?.split("&")[0]; if (id) embed = `https://www.youtube.com/embed/${id}`; } setForm({ ...form, videoUrl: v, embedCode: embed }); }} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
             <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
@@ -788,6 +788,7 @@ export default function AdminDashboard() {
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [files, setFiles] = useState<AppFile[]>([]);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [walletPromos, setWalletPromos] = useState<WalletPromo[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingData, setLoadingData] = useState(false);
@@ -981,4 +982,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
 
