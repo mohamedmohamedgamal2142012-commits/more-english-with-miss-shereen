@@ -132,11 +132,8 @@ export default function HomePage() {
             <div className="absolute w-[200px] h-[200px] rounded-full bg-accent opacity-[0.08] bottom-[10%] left-[10%]" />
 
             {/* Illustration placeholder */}
-            <div className="relative z-10 w-full max-w-[450px] h-[400px] bg-gradient-to-br from-[rgba(0,191,166,0.08)] to-[rgba(79,70,229,0.06)] rounded-[28px] flex items-center justify-center border border-primary/10">
-              <div className="text-center text-text-light">
-                <FaGraduationCap className="text-6xl mx-auto mb-4 text-primary/50" />
-                <p className="font-medium">{t("exploreCourses")}</p>
-              </div>
+            <div className="relative z-10 w-full max-w-[450px] h-[400px] rounded-[28px] overflow-hidden border border-primary/10">
+              <img src="/images/about-shereen.png" alt="Miss Shereen" className="w-full h-full object-cover" />
             </div>
 
             {/* Floating Cards */}
