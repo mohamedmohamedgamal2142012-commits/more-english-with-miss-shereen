@@ -671,7 +671,7 @@ const HomeworkTab = memo(function HomeworkTab(p: AdminTabProps) {
 
 // ====== REPORTS ======
 const ReportsTab = memo(function ReportsTab(p: AdminTabProps) {
-  const { lang, reports, students, showModal, setShowModal, modalType, form, setForm, handleSubmit, loadAll, openAdd } = p;
+  const { lang, reports, students, showModal, setShowModal, modalType, form, setForm, handleSubmit, handleDelete, loadAll, openAdd } = p;
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
