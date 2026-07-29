@@ -826,7 +826,6 @@ const Modal = memo(function Modal(p: AdminTabProps) {
                <label className="text-xs font-medium text-text-light">{lang === "ar" ? "المحتوى" : "Content"}</label>
                <textarea placeholder={lang === "ar" ? "المحتوى" : "Content"} value={form.content || ""} onChange={e => setForm({ ...form, content: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={4} />
              </div>
-            <input type="number" placeholder={lang === "ar" ? "الترتيب" : "Order"} value={form.order || 0} onChange={e => setForm({ ...form, order: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
             <input type="number" placeholder={lang === "ar" ? "السعر" : "Price"} value={form.price || 0} onChange={e => setForm({ ...form, price: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
              <div className="space-y-1">
                <label className="text-xs font-medium text-text-light">{lang === "ar" ? "حد المشاهدات (كام مره يقدر يشوف الدرس)" : "View Limit (how many times student can view)"}</label>
