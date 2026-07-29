@@ -374,7 +374,10 @@ const FilesTab = memo(function FilesTab(p: AdminTabProps) {
       <div className="flex justify-between items-center mb-5">
         <h3 className="text-lg font-semibold">{lang === "ar" ? "الملفات" : "Files"} ({files.length})</h3>
         <div className="flex gap-2">
-          <input type="file" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="text-sm" />
+          <label className="px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer">
+            {selectedFile ? selectedFile.name : (lang === "ar" ? "رفع ملف" : "UPLOAD")}
+            <input type="file" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="hidden" />
+          </label>
           <select value={form.lessonId || ""} onChange={e => setForm({ ...form, lessonId: e.target.value })} className="px-3 py-2 border border-border rounded-xl text-sm">
             <option value="">{lang === "ar" ? "عام" : "Public"}</option>
             {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
