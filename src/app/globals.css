@@ -1,8 +1,5 @@
 @import "tailwindcss";
 
-* {
-  cursor: url("https://i.ibb.co/6RH0S7p9/LKad-2-link.png") 16 16, auto;
-}
 
 @theme {
   --color-primary: #00BFA6;
