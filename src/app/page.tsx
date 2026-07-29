@@ -12,11 +12,9 @@ import {
   IoCheckmarkCircle, IoChatbubbles, IoNewspaper
 } from "react-icons/io5";
 import {
-  FaChild, FaUserGraduate, FaSchool, FaUniversity, FaCheck,
-  FaVideo, FaPencilAlt, FaQuestionCircle, FaFilePdf, FaEdit,
-  FaCertificate, FaChartPie, FaChalkboardTeacher, FaUsers,
+  FaChild, FaUserGraduate, FaSchool, FaUniversity, FaUsers,
   FaStar, FaPhone, FaEnvelope, FaMapMarkerAlt, FaPaperPlane,
-  FaWhatsapp, FaGraduationCap, FaBookOpen, FaComments, FaChartBar
+  FaWhatsapp, FaBookOpen
 } from "react-icons/fa";
 
 // ========= STAGES DATA =========
@@ -35,20 +33,6 @@ const stages = [
   { name: "Sec 1", icon: FaUniversity, age: "age15" },
   { name: "Sec 2", icon: FaUniversity, age: "age16" },
   { name: "Sec 3", icon: FaUniversity, age: "age17" },
-];
-
-// ========= FEATURES DATA =========
-const features = [
-  { icon: FaVideo, title: "fVideo", desc: "fVideoP" },
-  { icon: FaPencilAlt, title: "fHomework", desc: "fHomeworkP" },
-  { icon: FaQuestionCircle, title: "fQuizzes", desc: "fQuizzesP" },
-  { icon: FaFilePdf, title: "fPDF", desc: "fPDFP" },
-  { icon: FaEdit, title: "fExams", desc: "fExamsP" },
-  { icon: FaCertificate, title: "fCerts", desc: "fCertsP" },
-  { icon: FaChartPie, title: "fProgress", desc: "fProgressP" },
-  { icon: FaUserGraduate, title: "fStudent", desc: "fStudentP" },
-  { icon: FaChalkboardTeacher, title: "fTeacher", desc: "fTeacherP" },
-  { icon: FaUsers, title: "fParent", desc: "fParentP" },
 ];
 
 export default function HomePage() {
@@ -234,29 +218,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============ FEATURES ============ */}
-      <section className="py-24 bg-white">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="text-center mb-14 fade-section" style={{ opacity: 0 }}>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t("featuresTitle")}</h2>
-            <p className="text-text-light max-w-[600px] mx-auto">{t("featuresSub")}</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 fade-section" style={{ opacity: 0 }}>
-            {features.map((feat) => (
-              <div
-                key={feat.title}
-                className="bg-primary-bg rounded-[20px] p-8 text-center transition-all duration-300 border border-transparent hover:bg-white hover:border-primary hover:-translate-y-1 hover:shadow-lg"
-              >
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-primary to-accent flex items-center justify-center mx-auto mb-4 text-white text-xl">
-                  <feat.icon />
-                </div>
-                <h4 className="text-base font-semibold mb-2">{t(feat.title)}</h4>
-                <p className="text-sm text-text-light">{t(feat.desc)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* ============ CONTACT ============ */}
       <section id="contact" className="py-24 bg-primary-bg">
