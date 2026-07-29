@@ -651,8 +651,7 @@ const Modal = memo(function Modal(p: AdminTabProps) {
             <select value={form.courseType || "lessons"} onChange={e => setForm({ ...form, courseType: e.target.value, videoUrl: "", embedCode: "" })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="lessons">{lang === "ar" ? "دروس نصية" : "Text Lessons"}</option><option value="video">{lang === "ar" ? "فيديو" : "Video Course"}</option></select>
             {form.courseType === "video" && (
               <div className="space-y-3">
-                <input type="file" accept="video/*" onChange={e => setForm({ ...form, videoFile: e.target.files?.[0] || null })} className="w-full px-4 py-2 border border-border rounded-xl text-sm" />
-                <input placeholder={lang === "ar" ? "رابط اليوتيوب" : "YouTube URL"} value={form.videoUrl || ""} onChange={e => setForm({ ...form, videoUrl: e.target.value, videoFile: null })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+                <input placeholder={lang === "ar" ? "رابط اليوتيوب" : "YouTube URL"} value={form.videoUrl || ""} onChange={e => setForm({ ...form, videoUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
                 <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value, videoUrl: "" })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
               </div>
             )}
@@ -757,7 +756,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     const map: Record<string, string> = { course: "courses", lesson: "lessons", exam: "exams", homework: "homework" };
     const col = map[modalType];
-    if (modalType === "course") { const data = { ...form }; if (data.videoFile) { data.videoUrl = await uploadFile(data.videoFile, `courses/${Date.now()}_${data.videoFile.name}`); delete data.videoFile; } if (editId) await saveCourse(editId, data); else await saveCourse(null, data); }
+    if (modalType === "course") { if (editId) await saveCourse(editId, form); else await saveCourse(null, form); }
     else if (modalType === "lesson") {
       const data = { ...form, codes: form.codes ? form.codes.split("\n").map((c: string) => c.trim()).filter(Boolean) : [], viewers: form.viewers || {} };
       if (editId) await saveLesson(editId, data); else await saveLesson(null, data);
