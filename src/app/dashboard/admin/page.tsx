@@ -13,7 +13,7 @@ import {
   fetchExams, saveExam, deleteExam, fetchExamResults, submitExamResult,
   fetchHomework, saveHomework, deleteHomework, fetchSubmissions, gradeSubmission,
   fetchFiles, saveFile, deleteFile, uploadFile,
-  fetchTransactions, addTransaction,
+  fetchTransactions, addTransaction, deleteTransaction,
   fetchReports, saveReport, deleteReport,
   fetchNotifications, sendNotification, deleteNotification,
   updateUserProfile,
@@ -437,7 +437,7 @@ const WalletTab = memo(function WalletTab(p: AdminTabProps) {
       )}
       <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
         <table className="w-full text-sm border-collapse">
-          <thead><tr>{[lang === "ar" ? "الطالب" : "student", lang === "ar" ? "النوع" : "type", lang === "ar" ? "المبلغ" : "amount", lang === "ar" ? "الوصف" : "description", lang === "ar" ? "التاريخ" : "date"].map(h => <th key={h} className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{h}</th>)}</tr></thead>
+              <thead><tr>{[lang === "ar" ? "الطالب" : "student", lang === "ar" ? "النوع" : "type", lang === "ar" ? "المبلغ" : "amount", lang === "ar" ? "الوصف" : "description", lang === "ar" ? "التاريخ" : "date", ""].map(h => <th key={h} className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{h}</th>)}</tr></thead>
           <tbody>
             {transactions.map(tx => {
               const student = students.find(s => s.id === tx.studentId);
@@ -448,6 +448,7 @@ const WalletTab = memo(function WalletTab(p: AdminTabProps) {
                   <td className="px-4 py-3.5 border-b border-border font-bold">{tx.type === "credit" ? "+" : "-"}{tx.amount}</td>
                   <td className="px-4 py-3.5 border-b border-border text-text-light">{tx.description}</td>
                   <td className="px-4 py-3.5 border-b border-border text-text-light">{tx.createdAt?.toDate?.().toLocaleDateString() || ""}</td>
+                  <td className="px-4 py-3.5 border-b border-border"><button onClick={() => { if (confirm(lang === "ar" ? "حذف المعاملة؟" : "Delete transaction?")) { deleteTransaction(tx.id, tx.studentId, tx.type, tx.amount); loadAll(); } }} className="text-red-500 cursor-pointer bg-transparent border-none"><IoTrash /></button></td>
                 </tr>
               );
             })}

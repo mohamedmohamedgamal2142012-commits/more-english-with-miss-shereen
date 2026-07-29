@@ -289,6 +289,16 @@ export async function addTransaction(studentId: string, type: "credit" | "debit"
   }
 }
 
+export async function deleteTransaction(id: string, studentId: string, type: "credit" | "debit", amount: number) {
+  await deleteDoc(doc(db, "wallet-transactions", id));
+  const userRef = doc(db, "users", studentId);
+  const userSnap = await getDoc(userRef);
+  if (userSnap.exists()) {
+    const current = userSnap.data().wallet || 0;
+    await updateDoc(userRef, { wallet: type === "debit" ? current + amount : Math.max(0, current - amount) });
+  }
+}
+
 export async function fetchWalletPromos() {
   const snap = await getDocs(collection(db, "wallet-promos"));
   return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as WalletPromo));
