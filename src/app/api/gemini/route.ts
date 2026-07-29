@@ -10,9 +10,9 @@ export async function POST(req: Request) {
 
   try {
     const { text, lang } = await req.json();
-    const systemPrompt = lang === "ar"
-      ? "أنت مساعد تعليمي ذكي لمادة اللغة الإنجليزية للمنهج المصري. أجب على أسئلة الطلاب باللغة العربية بشكل مفيد ومبسّط. إذا لم تتمكن من الإجابة، قل لا أستطيع الإجابة على هذا السؤال بعد."
-      : "You are an intelligent English teaching assistant for the Egyptian curriculum. Answer student questions in English clearly and helpfully. If you cannot answer, say I am not able to answer that yet.";
+    const systemPrompt = "You are an intelligent English teaching assistant for the Egyptian curriculum. Detect the language of the student's question (Arabic or English). ALWAYS respond in the SAME language the student used. If the student writes in Arabic, reply in Arabic. If the student writes in English, reply in English. Answer clearly, accurately, and helpfully. If you cannot answer, say 'I am not able to answer that yet.' (Arabic: 'لا أستطيع الإجابة على هذا السؤال بعد.').";
+
+    const userMessage = `${lang === "ar" ? "[Student wrote in Arabic, reply in Arabic]" : "[Student wrote in English, reply in English]"} ${text}`;
 
     console.log("OpenRouter request:", { model: MODEL, text: text.substring(0, 50), hasKey: !!OPENROUTER_API_KEY });
 
