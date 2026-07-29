@@ -165,16 +165,8 @@ export default function HomePage() {
       <section id="about" className="py-24 bg-white">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center fade-section" style={{ opacity: 0 }}>
-            <div className="relative w-full max-w-[400px] h-[400px] mx-auto rounded-[28px] bg-gradient-to-br from-[rgba(0,191,166,0.1)] to-[rgba(79,70,229,0.08)] flex items-center justify-center overflow-hidden">
-              <div className="text-center">
-                <FaUserGraduate className="text-6xl text-primary/40 mx-auto mb-4" />
-                <h3 className="text-lg text-text">Miss Shereen Elmairy</h3>
-                <p className="text-sm text-text-light">English Language Educator</p>
-              </div>
-              <div className="absolute bottom-6 right-6 bg-gradient-to-r from-primary to-accent text-white px-5 py-3 rounded-xl text-center shadow-lg">
-                <strong className="block text-xl">10+</strong>
-                <span className="text-xs opacity-90">{t("yearsExp")}</span>
-              </div>
+            <div className="relative w-full max-w-[400px] h-[400px] mx-auto rounded-[28px] overflow-hidden">
+              <img src="/images/about-shereen.png" alt="Miss Shereen" className="w-full h-full object-cover" />
             </div>
 
             <div>
