@@ -310,7 +310,9 @@ const LessonsTab = memo(function LessonsTab(p: AdminTabProps) {
           {playing.thumbnail && <img src={playing.thumbnail} className="w-full h-48 object-cover rounded-xl mb-4" alt={playing.title} />}
           {playing.videoUrl && <div className="aspect-video bg-black rounded-xl overflow-hidden mb-4"><iframe src={getYouTubeEmbedUrl(playing.videoUrl)} className="w-full h-full" allowFullScreen /></div>}
           {playing.embedCode && <div className="mb-4" dangerouslySetInnerHTML={{ __html: playing.embedCode }} />}
-          {playing.price > 0 && <div className="text-sm mb-2">{lang === "ar" ? "السعر:" : "Price:"} {playing.price} {lang === "ar" ? "ج.م" : "EGP"}</div>}
+          {playing.price > 0 && <div className="text-sm mb-1">{lang === "ar" ? "السعر:" : "Price:"} {playing.price} {lang === "ar" ? "ج.م" : "EGP"}</div>}
+          <div className="text-sm mb-1">{lang === "ar" ? "حد المشاهدات:" : "View limit:"} {playing.viewLimit || 0}</div>
+          <div className="text-sm mb-2">{lang === "ar" ? "الأكواد:" : "Codes:"} {playing.codes?.join(", ") || "—"}</div>
           <div className="text-sm">{lang === "ar" ? "المشاهدون:" : "Viewers:"} {playing.viewers ? Object.keys(playing.viewers).length : 0}</div>
         </div>
       ) : (
@@ -326,7 +328,7 @@ const LessonsTab = memo(function LessonsTab(p: AdminTabProps) {
               </div>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => setPlaying(l)} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><IoEye /></button>
-                <button onClick={() => openEdit("lesson", l)} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><FaPencilAlt /></button>
+                <button onClick={() => openEdit("lesson", { ...l, codes: l.codes?.join("\n") || "" })} className="px-3 py-1.5 rounded-lg bg-bg text-sm cursor-pointer border-none"><FaPencilAlt /></button>
                 <button onClick={() => handleDelete("lesson", l.id)} className="px-3 py-1.5 rounded-lg bg-bg text-red-500 text-sm cursor-pointer border-none"><IoTrash /></button>
               </div>
             </div>
@@ -807,8 +809,16 @@ const Modal = memo(function Modal(p: AdminTabProps) {
             <input placeholder={lang === "ar" ? "رابط PDF" : "PDF URL"} value={form.pdfUrl || ""} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
             <textarea placeholder={lang === "ar" ? "المحتوى" : "Content"} value={form.content || ""} onChange={e => setForm({ ...form, content: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={4} />
             <input type="number" placeholder={lang === "ar" ? "الترتيب" : "Order"} value={form.order || 0} onChange={e => setForm({ ...form, order: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
-            <input type="number" placeholder={lang === "ar" ? "السعر" : "Price"} value={form.price || 0} onChange={e => setForm({ ...form, price: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" /></>
-          )}
+            <input type="number" placeholder={lang === "ar" ? "السعر" : "Price"} value={form.price || 0} onChange={e => setForm({ ...form, price: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+             <div className="space-y-1">
+               <label className="text-xs font-medium text-text-light">{lang === "ar" ? "حد المشاهدات (كام مره يقدر يشوف الدرس)" : "View Limit (how many times student can view)"}</label>
+               <input type="number" placeholder={lang === "ar" ? "حد المشاهدات" : "View Limit"} value={form.viewLimit || 0} onChange={e => setForm({ ...form, viewLimit: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+             </div>
+             <div className="space-y-1">
+               <label className="text-xs font-medium text-text-light">{lang === "ar" ? "أكواد التفعيل (كود لكل سطر - الطالب يدخله عشان يفتح الدرس)" : "Access codes (one per line - student enters code to unlock)"}</label>
+               <textarea placeholder={lang === "ar" ? "أكواد التفعيل" : "Access codes"} value={form.codes || ""} onChange={e => setForm({ ...form, codes: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
+             </div></>
+           )}
           {modalType === "homework" && (
             <><input placeholder={lang === "ar" ? "عنوان الواجب" : "Homework Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
             <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
@@ -908,7 +918,7 @@ export default function AdminDashboard() {
          if (thumbFile.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); return; }
          thumbnailUrl = await uploadFile(thumbFile, `lesson-thumbnails/${Date.now()}_${thumbFile.name}`);
        }
-       const data = { ...restForm, thumbnail: thumbnailUrl, viewers: form.viewers || {} };
+       const data = { ...restForm, thumbnail: thumbnailUrl, codes: form.codes ? form.codes.split("\n").map((c: string) => c.trim()).filter(Boolean) : [], viewers: form.viewers || {} };
        if (editId) await saveLesson(editId, data); else await saveLesson(null, data);
      }
     else if (modalType === "exam") {
