@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTranslation, Lang } from "@/lib/i18n";
-import { FaFacebookF, FaYoutube, FaInstagram, FaWhatsapp, FaTiktok } from "react-icons/fa";
+import { FaWhatsapp } from "react-icons/fa";
 import { IoSchool } from "react-icons/io5";
 
 interface FooterProps {
@@ -23,22 +23,14 @@ export default function Footer({ lang }: FooterProps) {
               {t("footerDesc")}
             </p>
             <div className="flex gap-3">
-              {[
-                { icon: FaFacebookF, label: "Facebook" },
-                { icon: FaYoutube, label: "YouTube" },
-                { icon: FaInstagram, label: "Instagram" },
-                { icon: FaWhatsapp, label: "WhatsApp" },
-                { icon: FaTiktok, label: "TikTok" },
-              ].map(({ icon: Icon, label }) => (
-                <a
-                  key={label}
-                  href="#"
-                  onClick={(e) => { e.preventDefault(); alert(`Demo: ${label}`); }}
-                  className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/70 transition-all duration-300 hover:bg-primary hover:text-white hover:-translate-y-0.5"
-                >
-                  <Icon className="text-base" />
-                </a>
-              ))}
+              <a
+                href="https://wa.me/201094589403"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/70 transition-all duration-300 hover:bg-primary hover:text-white hover:-translate-y-0.5"
+              >
+                <FaWhatsapp className="text-base" />
+              </a>
             </div>
           </div>
 
@@ -78,9 +70,8 @@ export default function Footer({ lang }: FooterProps) {
           <div>
             <h4 className="text-white text-base font-semibold mb-5">{t("navContact")}</h4>
             <ul className="flex flex-col gap-2.5 list-none text-sm text-white/60">
-              <li>+20 100 123 4567</li>
+              <li>+20 10 94589403</li>
               <li>info@miss-shereen.com</li>
-              <li>123 Education Street, Cairo, Egypt</li>
             </ul>
           </div>
         </div>
