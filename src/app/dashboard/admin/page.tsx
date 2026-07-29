@@ -97,9 +97,9 @@ const OverviewTab = memo(function OverviewTab(p: AdminTabProps) {
     <div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         {[
-          { icon: FaUserGraduate, bg: "bg-primary-light", color: "text-primary", value: activeStudents.toString(), label: lang === "ar" ? "طلاب معتمدين" : "Active Students" },
-          { icon: IoPeople, bg: "bg-[rgba(245,158,11,0.1)]", color: "text-yellow-600", value: pendingCount.toString(), label: lang === "ar" ? "معلقين" : "Pending" },
-          { icon: IoBook, bg: "bg-[rgba(79,70,229,0.1)]", color: "text-accent", value: lessons.length.toString(), label: lang === "ar" ? "دروس" : "Lessons" },
+          { icon: FaUserGraduate, bg: "bg-primary-light", color: "text-primary", value: activeStudents.toString(), label: lang === "ar" ? "طلاب معتمدين" : "Active Students", key: "" },
+          { icon: IoPeople, bg: "bg-[rgba(245,158,11,0.1)]", color: "text-yellow-600", value: pendingCount.toString(), label: lang === "ar" ? "معلقين" : "Pending", key: "" },
+          { icon: IoBook, bg: "bg-[rgba(79,70,229,0.1)]", color: "text-accent", value: lessons.length.toString(), label: lang === "ar" ? "دروس" : "Lessons", key: "" },
           ...financeCards.map(c => ({
             icon: c.icon, bg: c.bg, color: c.color, value: c.value.toString(), label: c.label, key: c.key
           })),
