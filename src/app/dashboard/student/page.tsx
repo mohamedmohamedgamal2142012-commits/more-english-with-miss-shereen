@@ -27,7 +27,7 @@ import {
 import { BADGES, getYouTubeEmbedUrl } from "@/lib/types";
 import type { Lesson, Exam, ExamQuestion, Homework, AppFile, WalletTransaction, Report, ExamResult, ChatMessage, Notification } from "@/lib/types";
 
-type STab = "home" | "lessons" | "wallet" | "exams" | "homework" | "files" | "reports" | "achievements" | "profile" | "parent" | "ai" | "notifications";
+type STab = "home" | "lessons" | "wallet" | "exams" | "homework" | "files" | "reports" | "achievements" | "profile" | "parent" | "ai" | "notifications" | "community" | "leaderboard";
 
 interface HomeTabProps { lang: string; lessons: Lesson[]; examResults: ExamResult[]; exams: Exam[]; wallet: number; badges: string[]; userId?: string; points: number; completedExams: number; }
 interface LessonsTabProps { lang: string; lessons: Lesson[]; userId?: string; wallet: number; activatedLessons?: string[]; activateLessonWithCode: (lessonId: string, code: string, userId: string) => Promise<boolean>; onPurchase: (lessonId: string, price: number) => Promise<void>; }
@@ -41,8 +41,6 @@ interface AchievementsTabProps { lang: string; badges: string[]; }
 interface ProfileTabProps { lang: string; profileForm: any; setProfileForm: (v: any) => void; userId?: string; updateUserProfile: (id: string, data: any) => Promise<void>; wallet: number; points: number; badges: string[]; streak: number; }
 interface ParentTabProps { lang: string; parentName: string; parentPhone: string; }
 interface AITabProps { lang: "en" | "ar"; aiChat: { role: string; text: string }[]; aiInput: string; setAiInput: (v: string) => void; setAiChat: (v: { role: string; text: string }[]) => void; }
-interface CommunityModalProps { lang: string; showCommunity: boolean; setShowCommunity: (v: boolean) => void; channelId: string; setChannelId: (v: string) => void; chatText: string; setChatText: (v: string) => void; chatMessages: ChatMessage[]; setChatMessages: (v: ChatMessage[]) => void; userId?: string; userName: string; fetchMessages: (channelId: string) => Promise<ChatMessage[]>; sendMessage: (data: any) => Promise<void>; }
-interface LeaderboardModalProps { lang: string; showLeaderboard: boolean; setShowLeaderboard: (v: boolean) => void; leaderboard: any[]; fetchLeaderboard: () => Promise<any[]>; }
 
 const HomeTab = memo(function HomeTab({ lang, lessons, examResults, exams, wallet, badges, userId, points, completedExams }: HomeTabProps) {
   const avgScore = examResults.length > 0 ? Math.round(examResults.reduce((a: number, r: ExamResult) => a + (r.score / r.total) * 100, 0) / examResults.length) : 0;
@@ -609,14 +607,16 @@ const AITabComp = memo(function AITabComp({ lang, aiChat, aiInput, setAiInput, s
    );
  });
 
-const CommunityModalComp = memo(function CommunityModalComp({ lang, showCommunity, setShowCommunity, channelId, setChannelId, chatText, setChatText, chatMessages, setChatMessages, userId, userName, fetchMessages, sendMessage }: CommunityModalProps) {
+const CommunityTab = memo(function CommunityTab({ lang, channelId, setChannelId, chatText, setChatText, chatMessages, setChatMessages, userId, userName, fetchMessages, sendMessage }: { lang: string; channelId: string; setChannelId: (v: string) => void; chatText: string; setChatText: (v: string) => void; chatMessages: ChatMessage[]; setChatMessages: (v: ChatMessage[]) => void; userId?: string; userName: string; fetchMessages: (channelId: string) => Promise<ChatMessage[]>; sendMessage: (data: any) => Promise<void> }) {
+  const chatEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const load = async () => {
       const msgs = await fetchMessages(channelId);
       setChatMessages(msgs);
     };
-    if (showCommunity) load();
-  }, [channelId, showCommunity]);
+    load();
+  }, [channelId]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
   const send = useCallback(async () => {
     if (!chatText.trim()) return;
     await sendMessage({ channelId, senderId: userId, senderName: userName || "User", text: chatText });
@@ -624,22 +624,18 @@ const CommunityModalComp = memo(function CommunityModalComp({ lang, showCommunit
     const msgs = await fetchMessages(channelId);
     setChatMessages(msgs);
   }, [channelId, chatText, userId, userName, sendMessage, setChatText]);
-  if (!showCommunity) return null;
   const channels = ["general", "english", "homework", "random"];
   const channelNames: Record<string, string> = { general: lang === "ar" ? "عام" : "General", english: "English", homework: lang === "ar" ? "واجبات" : "Homework", random: lang === "ar" ? "عشوائي" : "Random" };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowCommunity(false)}>
-      <div className="bg-white rounded-[20px] w-full max-w-lg max-h-[80vh] flex flex-col m-4" onClick={e => e.stopPropagation()}>
-        <div className="p-4 border-b border-border flex justify-between items-center">
-          <h3 className="font-bold">{lang === "ar" ? "المجتمع" : "Community"}</h3>
-          <button onClick={() => setShowCommunity(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button>
-        </div>
-        <div className="flex gap-2 px-4 py-2 border-b border-border overflow-x-auto">
+    <div>
+      <h3 className="text-lg font-semibold mb-5">{lang === "ar" ? "المجتمع" : "Community"}</h3>
+      <div className="bg-white rounded-[20px] shadow-sm border border-border flex flex-col max-h-[70vh]">
+        <div className="flex gap-2 px-4 py-3 border-b border-border overflow-x-auto">
           {channels.map(ch => (
             <button key={ch} onClick={() => setChannelId(ch)} className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border-none ${channelId === ch ? "bg-primary text-white" : "bg-bg text-text-light"}`}># {channelNames[ch]}</button>
           ))}
         </div>
-        <div className="flex-1 p-4 overflow-y-auto space-y-3 h-[300px]">
+        <div className="flex-1 p-4 overflow-y-auto space-y-3 min-h-[300px]">
           {chatMessages.map(msg => (
             <div key={msg.id} className={`flex ${msg.senderId === userId ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[80%] p-3 rounded-xl text-sm ${msg.senderId === userId ? "bg-primary text-white" : "bg-bg text-text"}`}>
@@ -648,10 +644,32 @@ const CommunityModalComp = memo(function CommunityModalComp({ lang, showCommunit
               </div>
             </div>
           ))}
+          <div ref={chatEndRef} />
         </div>
         <div className="p-3 border-t border-border flex gap-2">
           <input value={chatText} onChange={e => setChatText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder={lang === "ar" ? "اكتب رسالة..." : "Type a message..."} className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm" />
           <button onClick={send} className="px-4 py-2.5 rounded-xl bg-primary text-white cursor-pointer border-none">{lang === "ar" ? "إرسال" : "Send"}</button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const LeaderboardTab = memo(function LeaderboardTab({ lang, leaderboard }: { lang: string; leaderboard: any[] }) {
+  return (
+    <div>
+      <h3 className="text-lg font-semibold mb-5">{lang === "ar" ? "البطولة" : "Leaderboard"}</h3>
+      <div className="bg-white rounded-[20px] shadow-sm border border-border">
+        <div className="p-4">
+          {leaderboard.map((s, i) => (
+            <div key={s.id} className="flex justify-between items-center py-3 border-b border-border last:border-b-0">
+              <div className="flex items-center gap-3">
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-gray-100 text-gray-700" : i === 2 ? "bg-orange-100 text-orange-700" : "bg-bg text-text-light"}`}>{i + 1}</span>
+                <span className="text-sm font-medium">{s.name}</span>
+              </div>
+              <span className="text-sm font-bold text-primary">{s.points}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -681,30 +699,6 @@ const NotificationsTabComp = memo(function NotificationsTabComp({ lang, notifica
           ))}
         </div>
       )}
-    </div>
-  );
-});
-
-const LeaderboardModalComp = memo(function LeaderboardModalComp({ lang, showLeaderboard, setShowLeaderboard, leaderboard }: LeaderboardModalProps) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowLeaderboard(false)}>
-      <div className="bg-white rounded-[20px] w-full max-w-md max-h-[80vh] flex flex-col m-4" onClick={e => e.stopPropagation()}>
-        <div className="p-4 border-b border-border flex justify-between items-center">
-          <h3 className="font-bold">{lang === "ar" ? "البطولة" : "Leaderboard"}</h3>
-          <button onClick={() => setShowLeaderboard(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          {leaderboard.map((s, i) => (
-            <div key={s.id} className="flex justify-between items-center py-3 border-b border-border last:border-b-0">
-              <div className="flex items-center gap-3">
-                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-gray-100 text-gray-700" : i === 2 ? "bg-orange-100 text-orange-700" : "bg-bg text-text-light"}`}>{i + 1}</span>
-                <span className="text-sm font-medium">{s.name}</span>
-              </div>
-              <span className="text-sm font-bold text-primary">{s.points}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 });
@@ -748,8 +742,6 @@ export default function StudentDashboard() {
   const [userPhone, setUserPhone] = useState("");
   const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
-  const [showCommunity, setShowCommunity] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [activatedLessons, setActivatedLessons] = useState<string[]>([]);
 
   useEffect(() => { setLang(document.documentElement.lang === "ar" ? "ar" : "en"); }, []);
@@ -771,13 +763,14 @@ export default function StudentDashboard() {
   const loadData = async () => {
     setLoadingData(true);
     const safe = <T,>(p: Promise<T>): Promise<T> => p.catch(e => { console.error(e); return [] as any; });
-    const [l, e, h, f, t, r, er, c, n] = await Promise.all([
+    const [l, e, h, f, t, r, er, c, n, lb] = await Promise.all([
       safe(fetchLessons()), safe(fetchExams()), safe(fetchHomework()), safe(fetchFiles()),
-      safe(fetchTransactions(user?.uid)), safe(fetchReports(user?.uid)), safe(fetchExamResults(user?.uid)), safe(fetchCourses()), safe(fetchNotifications())
+      safe(fetchTransactions(user?.uid)), safe(fetchReports(user?.uid)), safe(fetchExamResults(user?.uid)), safe(fetchCourses()), safe(fetchNotifications()), safe(fetchLeaderboard())
     ]);
     setLessons(l); setExams(e); setHomework(h); setFiles(f);
     setTransactions(t); setReports(r); setExamResults(er); setCourses(c);
     setNotifications(n as Notification[]);
+    setLeaderboard(lb);
     setLoadingData(false);
   };
 
@@ -846,6 +839,8 @@ export default function StudentDashboard() {
     { key: "parent" as STab, icon: IoPeople, label: lang === "ar" ? "ولي الأمر" : "Parent" },
     { key: "ai" as STab, icon: FaRobot, label: lang === "ar" ? "المساعد الذكي" : "AI Assistant" },
     { key: "notifications" as STab, icon: IoNotifications, label: lang === "ar" ? "الإشعارات" : "Notifications" },
+    { key: "community" as STab, icon: IoChatbubbles, label: lang === "ar" ? "المجتمع" : "Community" },
+    { key: "leaderboard" as STab, icon: IoTrophy, label: lang === "ar" ? "البطولة" : "Leaderboard" },
   ];
 
   function renderTab() {
@@ -862,6 +857,8 @@ export default function StudentDashboard() {
       case "parent": return <ParentTabComp lang={lang} parentName={parentName} parentPhone={parentPhone} />;
       case "ai": return <AITabComp lang={lang} aiChat={aiChat} aiInput={aiInput} setAiInput={setAiInput} setAiChat={setAiChat} />;
       case "notifications": return <NotificationsTabComp lang={lang} notifications={notifications} />;
+      case "community": return <CommunityTab lang={lang} channelId={channelId} setChannelId={setChannelId} chatText={chatText} setChatText={setChatText} chatMessages={chatMessages} setChatMessages={setChatMessages} userId={user?.uid} userName={userName} fetchMessages={fetchMessages} sendMessage={sendMessage} />;
+      case "leaderboard": return <LeaderboardTab lang={lang} leaderboard={leaderboard} />;
        default: return null;
     }
   }
@@ -879,14 +876,6 @@ export default function StudentDashboard() {
               <item.icon className="text-sm w-5 text-center" /> {item.label}
             </a>
           ))}
-          <a href="#" onClick={e => { e.preventDefault(); setShowCommunity(true); }}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-text-light hover:bg-primary-light hover:text-primary transition-all duration-300 mb-0.5 cursor-pointer">
-            <IoChatbubbles className="text-sm w-5 text-center" /> {lang === "ar" ? "المجتمع" : "Community"}
-          </a>
-          <a href="#" onClick={e => { e.preventDefault(); setShowLeaderboard(true); }}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-text-light hover:bg-primary-light hover:text-primary transition-all duration-300 mb-0.5 cursor-pointer">
-            <IoTrophy className="text-sm w-5 text-center" /> {lang === "ar" ? "البطولة" : "Leaderboard"}
-          </a>
           <a href="#" onClick={e => { e.preventDefault(); logout(); }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-text-light hover:bg-red-50 hover:text-red-500 transition-all duration-300 mt-4 cursor-pointer">
             <IoLogOut className="text-sm w-5 text-center" /> {lang === "ar" ? "تسجيل الخروج" : "Logout"}
@@ -911,12 +900,6 @@ export default function StudentDashboard() {
 
         {loadingData ? <div className="text-center py-12"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" /></div> : renderTab()}
       </div>
-
-      <CommunityModalComp lang={lang} showCommunity={showCommunity} setShowCommunity={setShowCommunity} channelId={channelId} setChannelId={setChannelId} chatText={chatText} setChatText={setChatText} chatMessages={chatMessages} setChatMessages={setChatMessages} userId={user?.uid} userName={userName} fetchMessages={fetchMessages} sendMessage={sendMessage} />
-
-      {showLeaderboard && (
-        <LeaderboardModalComp lang={lang} showLeaderboard={showLeaderboard} setShowLeaderboard={setShowLeaderboard} leaderboard={leaderboard} fetchLeaderboard={fetchLeaderboard} />
-      )}
     </div>
   );
 }
