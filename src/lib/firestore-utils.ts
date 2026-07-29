@@ -102,6 +102,24 @@ export async function incrementLessonView(lessonId: string, userId: string) {
   }
 }
 
+export async function activateLessonWithCode(lessonId: string, code: string, userId: string) {
+  const lessonRef = doc(db, "lessons", lessonId);
+  const lessonSnap = await getDoc(lessonRef);
+  if (!lessonSnap.exists()) throw new Error("Lesson not found");
+  const lesson = lessonSnap.data() as Lesson;
+  const codes = lesson.codes || [];
+  if (codes.length === 0) throw new Error("No activation code needed");
+  const match = codes.find(c => c.toLowerCase().trim() === code.toLowerCase().trim());
+  if (!match) throw new Error("Invalid code");
+  const userRef = doc(db, "users", userId);
+  const userSnap = await getDoc(userRef);
+  const activated: string[] = userSnap.data()?.activatedLessons || [];
+  if (activated.includes(lessonId)) throw new Error("Already activated");
+  activated.push(lessonId);
+  await updateDoc(userRef, { activatedLessons: activated });
+  return true;
+}
+
 // === Exams ===
 export async function fetchExams() {
   const q = query(collection(db, "exams"), orderBy("createdAt", "desc"));

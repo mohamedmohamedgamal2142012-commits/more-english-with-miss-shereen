@@ -21,18 +21,19 @@ import {
   fetchReports, fetchExamResults, submitExamResult, submitHomework,
   uploadFile, incrementLessonView, updateUserProfile,
   fetchMessages, sendMessage, fetchLeaderboard, fetchCourses,
-  fetchWalletPromos, validateWalletPromo
+  fetchWalletPromos, validateWalletPromo,
+  activateLessonWithCode, fetchNotifications
 } from "@/lib/firestore-utils";
 import { BADGES, getYouTubeEmbedUrl } from "@/lib/types";
-import type { Lesson, Exam, ExamQuestion, Homework, AppFile, WalletTransaction, Report, ExamResult, ChatMessage } from "@/lib/types";
+import type { Lesson, Exam, ExamQuestion, Homework, AppFile, WalletTransaction, Report, ExamResult, ChatMessage, Notification } from "@/lib/types";
 
-type STab = "home" | "lessons" | "wallet" | "exams" | "homework" | "files" | "reports" | "achievements" | "profile" | "parent" | "ai";
+type STab = "home" | "lessons" | "wallet" | "exams" | "homework" | "files" | "reports" | "achievements" | "profile" | "parent" | "ai" | "notifications";
 
 interface HomeTabProps { lang: string; lessons: Lesson[]; examResults: ExamResult[]; exams: Exam[]; wallet: number; badges: string[]; userId?: string; points: number; completedExams: number; }
-interface LessonsTabProps { lang: string; lessons: Lesson[]; userId?: string; }
+interface LessonsTabProps { lang: string; lessons: Lesson[]; userId?: string; activatedLessons?: string[]; activateLessonWithCode: (lessonId: string, code: string, userId: string) => Promise<boolean>; }
 interface WalletTabProps { lang: string; wallet: number; transactions: WalletTransaction[]; userId?: string; }
 interface ExamsTabProps { lang: string; exams: Exam[]; examResults: ExamResult[]; userId?: string; setActiveExam: (e: Exam | null) => void; examAnswers: Record<string, string>; setExamAnswers: (v: Record<string, string>) => void; examSubmitted: boolean; setExamSubmitted: (v: boolean) => void; examScore: number; setExamScore: (v: number) => void; examTimer: number; setExamTimer: (v: number) => void; }
-interface ExamPlayerProps { lang: string; activeExam: Exam; examAnswers: Record<string, string>; setExamAnswers: (v: Record<string, string>) => void; examSubmitted: boolean; setExamSubmitted: (v: boolean) => void; examScore: number; setExamScore: (v: number) => void; examTimer: number; setActiveExam: (v: Exam | null) => void; userId?: string; userName?: string; submitExamResult: (data: any) => Promise<void>; }
+interface ExamPlayerProps { lang: string; activeExam: Exam; examAnswers: Record<string, string>; setExamAnswers: (v: Record<string, string>) => void; examSubmitted: boolean; setExamSubmitted: (v: boolean) => void; examScore: number; setExamScore: (v: number) => void; examTimer: number; setActiveExam: (v: Exam | null) => void; userId?: string; userName?: string; submitExamResult: (data: any) => Promise<void>; submitExamRef?: React.MutableRefObject<(() => void) | null>; }
 interface HomeworkTabProps { lang: string; homework: Homework[]; selectedHomework: string | null; setSelectedHomework: (v: string | null) => void; homeworkFiles: File[]; setHomeworkFiles: (v: File[]) => void; userId?: string; uploadFile: (file: File, path: string) => Promise<string>; submitHomeworkFn: (data: any) => Promise<void>; }
 interface FilesTabProps { lang: string; files: AppFile[]; lessons: Lesson[]; userId?: string; }
 interface ReportsTabProps { lang: string; reports: Report[]; }
@@ -90,8 +91,30 @@ const HomeTab = memo(function HomeTab({ lang, lessons, examResults, exams, walle
   );
 });
 
-const LessonsTab = memo(function LessonsTab({ lang, lessons, userId }: LessonsTabProps) {
+const LessonsTab = memo(function LessonsTab({ lang, lessons, userId, activatedLessons = [], activateLessonWithCode }: LessonsTabProps) {
   const [playing, setPlaying] = useState<Lesson | null>(null);
+  const [codeInputs, setCodeInputs] = useState<Record<string, string>>({});
+  const [codeMsgs, setCodeMsgs] = useState<Record<string, string>>({});
+  const [codeLoading, setCodeLoading] = useState<Record<string, boolean>>({});
+  const handleActivate = useCallback(async (lessonId: string) => {
+    const code = (codeInputs[lessonId] || "").trim();
+    if (!code) return;
+    setCodeLoading(prev => ({ ...prev, [lessonId]: true }));
+    setCodeMsgs(prev => ({ ...prev, [lessonId]: "" }));
+    try {
+      await activateLessonWithCode(lessonId, code, userId!);
+      setCodeMsgs(prev => ({ ...prev, [lessonId]: lang === "ar" ? "تم التفعيل!" : "Activated!" }));
+    } catch (e: any) {
+      setCodeMsgs(prev => ({ ...prev, [lessonId]: e.message }));
+    }
+    setCodeLoading(prev => ({ ...prev, [lessonId]: false }));
+  }, [codeInputs, activateLessonWithCode, userId, lang]);
+
+  const canPlay = useCallback((lesson: Lesson) => {
+    if (!lesson.codes || lesson.codes.length === 0) return true;
+    return activatedLessons.includes(lesson.id);
+  }, [activatedLessons]);
+
   return (
     <div>
       <h3 className="text-lg font-semibold mb-5">{lang === "ar" ? "الدروس" : "Lessons"}</h3>
@@ -114,10 +137,12 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId }: LessonsTa
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {lessons.map(l => (
+          {lessons.map(l => {
+            const locked = l.codes && l.codes.length > 0 && !canPlay(l);
+            return (
             <div key={l.id} className="bg-white rounded-[20px] overflow-hidden shadow-sm border border-border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-              <div className="h-[120px] bg-gradient-to-br from-[rgba(0,191,166,0.15)] to-[rgba(79,70,229,0.1)] flex items-center justify-center">
-                <IoPlay className="text-3xl text-primary/50" />
+              <div className={`h-[120px] flex items-center justify-center ${locked ? "bg-gray-100" : "bg-gradient-to-br from-[rgba(0,191,166,0.15)] to-[rgba(79,70,229,0.1)]"}`}>
+                {locked ? <IoLockClosed className="text-3xl text-gray-300" /> : <IoPlay className="text-3xl text-primary/50" />}
               </div>
               <div className="p-4">
                 <span className="text-xs text-primary bg-primary-light px-2 py-0.5 rounded-full">{l.courseName}</span>
@@ -126,11 +151,26 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId }: LessonsTa
                   {l.price > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">{l.price} {lang === "ar" ? "ج.م" : "EGP"}</span>}
                 </div>
                 <h4 className="font-semibold mt-2 text-sm">{l.title}</h4>
+                {locked ? (
+                  <div className="mt-3">
+                    {codeMsgs[l.id] && (
+                      <p className={`text-xs mb-1 ${codeMsgs[l.id] === (lang === "ar" ? "تم التفعيل!" : "Activated!") ? "text-green-600" : "text-red-500"}`}>{codeMsgs[l.id]}</p>
+                    )}
+                    <div className="flex gap-1">
+                      <input value={codeInputs[l.id] || ""} onChange={e => setCodeInputs(prev => ({ ...prev, [l.id]: e.target.value }))} placeholder={lang === "ar" ? "كود التفعيل" : "Activation code"} className="flex-1 px-3 py-1.5 border border-border rounded-lg text-xs" />
+                      <button onClick={() => handleActivate(l.id)} disabled={codeLoading[l.id]} className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs cursor-pointer border-none">{codeLoading[l.id] ? "..." : (lang === "ar" ? "تفعيل" : "Activate")}</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
                 <p className="text-xs text-text-light mt-1">{lang === "ar" ? `المشاهدات: ${userId ? l.viewers?.[userId] || 0 : 0}` : `Views: ${userId ? l.viewers?.[userId] || 0 : 0}`}</p>
                 <button onClick={async () => { await incrementLessonView(l.id, userId!); setPlaying(l); }} className="mt-3 w-full px-3 py-2 rounded-full text-xs font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{lang === "ar" ? "مشاهدة" : "Watch"}</button>
+                </>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
           {lessons.length === 0 && <div className="col-span-full text-center py-12 text-text-light">{lang === "ar" ? "لا توجد دروس متاحة" : "No lessons available"}</div>}
         </div>
       )}
@@ -222,7 +262,7 @@ const ExamsTabComp = memo(function ExamsTabComp({ lang, exams, examResults, user
   );
 });
 
-const ExamPlayerComp = memo(function ExamPlayerComp({ lang, activeExam, examAnswers, setExamAnswers, examSubmitted, setExamSubmitted, examScore, setExamScore, examTimer, setActiveExam, userId, userName, submitExamResult }: ExamPlayerProps) {
+const ExamPlayerComp = memo(function ExamPlayerComp({ lang, activeExam, examAnswers, setExamAnswers, examSubmitted, setExamSubmitted, examScore, setExamScore, examTimer, setActiveExam, userId, userName, submitExamResult, submitExamRef }: ExamPlayerProps) {
   const submitExam = useCallback(() => {
     let score = 0;
     const answers = activeExam.questions.map(q => {
@@ -237,6 +277,11 @@ const ExamPlayerComp = memo(function ExamPlayerComp({ lang, activeExam, examAnsw
     setExamSubmitted(true);
     submitExamResult({ examId: activeExam.id, studentId: userId, score, total, passed, answers, submittedAt: new Date() as any });
   }, [activeExam, examAnswers, setExamAnswers, setExamSubmitted, setExamScore, submitExamResult, userId]);
+
+  useEffect(() => {
+    if (submitExamRef) submitExamRef.current = submitExam;
+    return () => { if (submitExamRef) submitExamRef.current = null; };
+  }, [submitExam, submitExamRef]);
 
   if (examSubmitted) {
     const total = activeExam.questions.reduce((a: number, q: ExamQuestion) => a + (q.points || 1), 0);
@@ -585,6 +630,33 @@ const CommunityModalComp = memo(function CommunityModalComp({ lang, showCommunit
   );
 });
 
+const NotificationsTabComp = memo(function NotificationsTabComp({ lang, notifications }: { lang: string; notifications: Notification[] }) {
+  const sorted = [...notifications].sort((a, b) => ((b.createdAt as any)?.toDate?.() || 0) - ((a.createdAt as any)?.toDate?.() || 0));
+  return (
+    <div>
+      <h3 className="text-lg font-semibold mb-5">{lang === "ar" ? "الإشعارات" : "Notifications"}</h3>
+      {sorted.length === 0 ? (
+        <div className="text-center py-12 text-text-light">
+          <IoNotifications className="text-4xl mx-auto mb-3 opacity-30" />
+          <p>{lang === "ar" ? "لا توجد إشعارات" : "No notifications"}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sorted.map(n => (
+            <div key={n.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border hover:border-primary/30 transition-all duration-300">
+              <h4 className="font-semibold text-sm mb-1">{n.title}</h4>
+              <p className="text-sm text-text-light">{n.body}</p>
+              <p className="text-xs text-text-light mt-2 opacity-60">
+                {n.createdAt?.toDate ? new Date(n.createdAt.toDate()).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { day: "numeric", month: "short", year: "numeric" }) : ""}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
 const LeaderboardModalComp = memo(function LeaderboardModalComp({ lang, showLeaderboard, setShowLeaderboard, leaderboard }: LeaderboardModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowLeaderboard(false)}>
@@ -623,11 +695,13 @@ export default function StudentDashboard() {
   const [reports, setReports] = useState<Report[]>([]);
   const [examResults, setExamResults] = useState<ExamResult[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeExam, setActiveExam] = useState<Exam | null>(null);
   const [examAnswers, setExamAnswers] = useState<Record<string, string>>({});
   const [examSubmitted, setExamSubmitted] = useState(false);
   const [examScore, setExamScore] = useState(0);
   const [examTimer, setExamTimer] = useState(0);
+  const submitExamRef = useRef<(() => void) | null>(null);
   const [homeworkFiles, setHomeworkFiles] = useState<File[]>([]);
   const [selectedHomework, setSelectedHomework] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -648,6 +722,7 @@ export default function StudentDashboard() {
   const [parentPhone, setParentPhone] = useState("");
   const [showCommunity, setShowCommunity] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [activatedLessons, setActivatedLessons] = useState<string[]>([]);
 
   useEffect(() => { setLang(document.documentElement.lang === "ar" ? "ar" : "en"); }, []);
 
@@ -668,12 +743,13 @@ export default function StudentDashboard() {
   const loadData = async () => {
     setLoadingData(true);
     const safe = <T,>(p: Promise<T>): Promise<T> => p.catch(e => { console.error(e); return [] as any; });
-    const [l, e, h, f, t, r, er, c] = await Promise.all([
+    const [l, e, h, f, t, r, er, c, n] = await Promise.all([
       safe(fetchLessons()), safe(fetchExams()), safe(fetchHomework()), safe(fetchFiles()),
-      safe(fetchTransactions(user?.uid)), safe(fetchReports(user?.uid)), safe(fetchExamResults(user?.uid)), safe(fetchCourses())
+      safe(fetchTransactions(user?.uid)), safe(fetchReports(user?.uid)), safe(fetchExamResults(user?.uid)), safe(fetchCourses()), safe(fetchNotifications())
     ]);
     setLessons(l); setExams(e); setHomework(h); setFiles(f);
     setTransactions(t); setReports(r); setExamResults(er); setCourses(c);
+    setNotifications(n as Notification[]);
     setLoadingData(false);
   };
 
@@ -691,6 +767,7 @@ export default function StudentDashboard() {
       setUserPhone(d.phone || "");
       setParentName(d.parentName || "");
       setParentPhone(d.parentPhone || "");
+      setActivatedLessons(d.activatedLessons || []);
       setProfileForm({ name: d.name, phone: d.phone, school: d.school || "", department: d.department || "", governorate: d.governorate || "", parentName: d.parentName || "", parentPhone: d.parentPhone || "" });
     }
   };
@@ -698,7 +775,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     if (activeExam && examTimer > 0 && !examSubmitted) {
       const int = setInterval(() => {
-        setExamTimer((prev: number) => { if (prev <= 1) { setExamSubmitted(true); return 0; } return prev - 1; });
+        setExamTimer((prev: number) => { if (prev <= 1) { submitExamRef.current?.(); return 0; } return prev - 1; });
       }, 1000);
       return () => clearInterval(int);
     }
@@ -740,14 +817,15 @@ export default function StudentDashboard() {
     { key: "profile" as STab, icon: IoPerson, label: lang === "ar" ? "الملف الشخصي" : "Profile" },
     { key: "parent" as STab, icon: IoPeople, label: lang === "ar" ? "ولي الأمر" : "Parent" },
     { key: "ai" as STab, icon: FaRobot, label: lang === "ar" ? "المساعد الذكي" : "AI Assistant" },
+    { key: "notifications" as STab, icon: IoNotifications, label: lang === "ar" ? "الإشعارات" : "Notifications" },
   ];
 
   function renderTab() {
     switch (tab) {
       case "home": return <HomeTab lang={lang} lessons={lessons} examResults={examResults} exams={exams} wallet={wallet} badges={badges} userId={user?.uid} points={points} completedExams={completedExams} />;
-      case "lessons": return <LessonsTab lang={lang} lessons={lessons} userId={user?.uid} />;
+      case "lessons": return <LessonsTab lang={lang} lessons={lessons} userId={user?.uid} activatedLessons={activatedLessons} activateLessonWithCode={activateLessonWithCode} />;
       case "wallet": return <WalletTabComp lang={lang} wallet={wallet} transactions={transactions} userId={user?.uid} />;
-      case "exams": return activeExam ? <ExamPlayerComp lang={lang} activeExam={activeExam} examAnswers={examAnswers} setExamAnswers={setExamAnswers} examSubmitted={examSubmitted} setExamSubmitted={setExamSubmitted} examScore={examScore} setExamScore={setExamScore} examTimer={examTimer} setActiveExam={setActiveExam} userId={user?.uid} userName={userName} submitExamResult={submitExamResult} /> : <ExamsTabComp lang={lang} exams={exams} examResults={examResults} userId={user?.uid} setActiveExam={setActiveExam} examAnswers={examAnswers} setExamAnswers={setExamAnswers} examSubmitted={examSubmitted} setExamSubmitted={setExamSubmitted} examScore={examScore} setExamScore={setExamScore} examTimer={examTimer} setExamTimer={setExamTimer} />;
+      case "exams": return activeExam ? <ExamPlayerComp lang={lang} activeExam={activeExam} examAnswers={examAnswers} setExamAnswers={setExamAnswers} examSubmitted={examSubmitted} setExamSubmitted={setExamSubmitted} examScore={examScore} setExamScore={setExamScore} examTimer={examTimer} setActiveExam={setActiveExam} userId={user?.uid} userName={userName} submitExamResult={submitExamResult} submitExamRef={submitExamRef} /> : <ExamsTabComp lang={lang} exams={exams} examResults={examResults} userId={user?.uid} setActiveExam={setActiveExam} examAnswers={examAnswers} setExamAnswers={setExamAnswers} examSubmitted={examSubmitted} setExamSubmitted={setExamSubmitted} examScore={examScore} setExamScore={setExamScore} examTimer={examTimer} setExamTimer={setExamTimer} />;
       case "homework": return <HomeworkTabComp lang={lang} homework={homework} selectedHomework={selectedHomework} setSelectedHomework={setSelectedHomework} homeworkFiles={homeworkFiles} setHomeworkFiles={setHomeworkFiles} userId={user?.uid} uploadFile={uploadFile} submitHomeworkFn={submitHomework} />;
       case "files": return <FilesTabComp lang={lang} files={files} lessons={lessons} userId={user?.uid} />;
       case "reports": return <ReportsTabComp lang={lang} reports={reports} />;
@@ -755,6 +833,7 @@ export default function StudentDashboard() {
       case "profile": return <ProfileTabComp lang={lang} profileForm={profileForm} setProfileForm={setProfileForm} userId={user?.uid} updateUserProfile={updateUserProfile} wallet={wallet} points={points} badges={badges} streak={streak} />;
       case "parent": return <ParentTabComp lang={lang} parentName={parentName} parentPhone={parentPhone} />;
       case "ai": return <AITabComp lang={lang} aiChat={aiChat} aiInput={aiInput} setAiInput={setAiInput} setAiChat={setAiChat} />;
+      case "notifications": return <NotificationsTabComp lang={lang} notifications={notifications} />;
        default: return null;
     }
   }

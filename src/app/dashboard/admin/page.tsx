@@ -27,7 +27,7 @@ import {
   IoCheckmarkCircle, IoCloseCircle, IoBan, IoAdd, IoClose,
   IoArrowBack, IoSearch, IoFilter, IoReload, IoWallet,
   IoStatsChart, IoRibbon, IoSettings, IoPaperPlane,
-  IoEye, IoEyeOff, IoCloudUpload, IoLink, IoCopy
+  IoEye, IoEyeOff, IoCloudUpload, IoLink, IoCopy, IoCash
 } from "react-icons/io5";
 import { FaUserGraduate, FaUsers, FaBookOpen, FaPencilAlt, FaChalkboardTeacher, FaCreditCard, FaFileAlt, FaRobot, FaGamepad, FaChartBar, FaWhatsapp } from "react-icons/fa";
 
@@ -80,6 +80,9 @@ const OverviewTab = memo(function OverviewTab(p: AdminTabProps) {
   const { lang, students, lessons, pendingStudents, transactions } = p;
   const activeStudents = students.filter(s => s.status === "active").length;
   const pendingCount = pendingStudents.length;
+  const totalCredits = transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0);
+  const totalDebits = transactions.reduce((a, t) => t.type === "debit" ? a + t.amount : a, 0);
+  const netProfit = totalCredits - totalDebits;
   return (
     <div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -87,7 +90,9 @@ const OverviewTab = memo(function OverviewTab(p: AdminTabProps) {
           { icon: FaUserGraduate, bg: "bg-primary-light", color: "text-primary", value: activeStudents.toString(), label: lang === "ar" ? "طلاب معتمدين" : "Active Students" },
           { icon: IoPeople, bg: "bg-[rgba(245,158,11,0.1)]", color: "text-yellow-600", value: pendingCount.toString(), label: lang === "ar" ? "معلقين" : "Pending" },
           { icon: IoBook, bg: "bg-[rgba(79,70,229,0.1)]", color: "text-accent", value: lessons.length.toString(), label: lang === "ar" ? "دروس" : "Lessons" },
-          { icon: IoWallet, bg: "bg-[rgba(59,130,246,0.1)]", color: "text-blue-600", value: `${transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0)}`, label: lang === "ar" ? "إجمالي المحافظ" : "Total Wallet" },
+          { icon: IoWallet, bg: "bg-[rgba(59,130,246,0.1)]", color: "text-blue-600", value: `${totalCredits}`, label: lang === "ar" ? "إجمالي الإيرادات" : "Total Revenue" },
+          { icon: IoStatsChart, bg: "bg-[rgba(16,185,129,0.1)]", color: "text-green-600", value: `${netProfit}`, label: lang === "ar" ? "صافي الربح" : "Net Profit" },
+          { icon: IoCash, bg: "bg-[rgba(245,158,11,0.1)]", color: "text-yellow-600", value: `${totalDebits}`, label: lang === "ar" ? "المصروفات" : "Debits" },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-[20px] p-6 shadow-sm border border-border flex items-center gap-4">
             <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center ${s.color}`}><s.icon className="text-xl" /></div>
@@ -125,9 +130,59 @@ const StudentsTab = memo(function StudentsTab(p: AdminTabProps) {
   const [editingStudent, setEditingStudent] = useState<AppUser | null>(null);
   const [editStudentForm, setEditStudentForm] = useState<any>({});
   const [search, setSearch] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", email: "", phone: "", password: "", parentName: "", parentPhone: "" });
+  const [createMsg, setCreateMsg] = useState("");
+  const [creating, setCreating] = useState(false);
   const filtered = students.filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.email.toLowerCase().includes(search.toLowerCase()));
+
+  const handleCreate = async () => {
+    if (!createForm.name || !createForm.email || !createForm.password) {
+      setCreateMsg(lang === "ar" ? "الاسم والبريد وكلمة المرور مطلوبة" : "Name, email, and password required");
+      return;
+    }
+    setCreating(true);
+    setCreateMsg("");
+    try {
+      const res = await fetch("/api/create-student", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: createForm.email, password: createForm.password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      const { setDoc, doc, serverTimestamp } = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+      await setDoc(doc(db, "users", data.uid), {
+        name: createForm.name, email: createForm.email,
+        phone: createForm.phone || "", role: "student", status: "active",
+        photoURL: "", school: "", department: "", governorate: "",
+        parentName: createForm.parentName || "", parentPhone: createForm.parentPhone || "",
+        wallet: 0, streak: 0, badges: [], points: 0, activatedLessons: [],
+        createdAt: serverTimestamp(),
+      });
+      setCreateMsg(lang === "ar" ? "تم إنشاء الطالب بنجاح!" : "Student created successfully!");
+      setShowCreateModal(false);
+      setCreateForm({ name: "", email: "", phone: "", password: "", parentName: "", parentPhone: "" });
+      loadAll();
+    } catch (e: any) { setCreateMsg(e.message); }
+    setCreating(false);
+  };
   return (
     <div>
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setShowCreateModal(false); setCreateMsg(""); }}>
+          <div className="bg-white rounded-[20px] p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{lang === "ar" ? "إضافة طالب جديد" : "Add New Student"}</h3><button onClick={() => { setShowCreateModal(false); setCreateMsg(""); }} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
+            <div className="space-y-4">
+              {["name", "email", "phone", "password", "parentName", "parentPhone"].map(key => (
+                <input key={key} type={key === "password" ? "password" : "text"} placeholder={key} value={(createForm as any)[key] || ""} onChange={e => setCreateForm({ ...createForm, [key]: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              ))}
+              <button onClick={handleCreate} disabled={creating} className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none disabled:opacity-50">{creating ? (lang === "ar" ? "جارٍ الإنشاء..." : "Creating...") : (lang === "ar" ? "إنشاء الطالب" : "Create Student")}</button>
+              {createMsg && <p className={`text-sm text-center ${createMsg.includes("success") || createMsg.includes("بن") ? "text-green-600" : "text-red-500"}`}>{createMsg}</p>}
+            </div>
+          </div>
+        </div>
+      )}
       {editingStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditingStudent(null)}>
           <div className="bg-white rounded-[20px] p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
@@ -143,9 +198,12 @@ const StudentsTab = memo(function StudentsTab(p: AdminTabProps) {
         </div>
       )}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
-        <div className="relative flex-1 max-w-xs">
-          <IoSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={lang === "ar" ? "بحث..." : "Search..."} className="w-full pl-10 pr-4 py-3 border border-border rounded-xl text-sm" />
+        <div className="flex gap-3">
+          <div className="relative flex-1 max-w-xs">
+            <IoSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={lang === "ar" ? "بحث..." : "Search..."} className="w-full pl-10 pr-4 py-3 border border-border rounded-xl text-sm" />
+          </div>
+          <button onClick={() => setShowCreateModal(true)} className="px-4 py-3 rounded-xl bg-primary text-white text-sm font-medium cursor-pointer border-none flex items-center gap-2"><IoAdd /> {lang === "ar" ? "إضافة طالب" : "Add Student"}</button>
         </div>
         <span className="text-sm text-text-light">{students.length} {lang === "ar" ? "طالب" : "students"}</span>
       </div>

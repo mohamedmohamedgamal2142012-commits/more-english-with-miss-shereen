@@ -19,6 +19,7 @@ export interface AppUser {
   streak: number;
   badges: string[];
   points: number;
+  activatedLessons?: string[];
   createdAt: any;
 }
 
