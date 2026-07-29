@@ -14,6 +14,7 @@ import {
 } from "react-icons/io5";
 import { FaFileAlt, FaUserGraduate, FaRobot, FaTrophy, FaGamepad, FaWhatsapp } from "react-icons/fa";
 import { getTranslation } from "@/lib/i18n";
+import { sendGeminiMessage } from "@/lib/gemini";
 import {
   fetchLessons, fetchExams, fetchHomework, fetchFiles, fetchTransactions,
   fetchReports, fetchExamResults, submitExamResult, submitHomework,
@@ -470,19 +471,17 @@ const ParentTabComp = memo(function ParentTabComp({ lang, parentName, parentPhon
 });
 
 const AITabComp = memo(function AITabComp({ lang, aiChat, aiInput, setAiInput, setAiChat }: AITabProps) {
-  const sendAiMessage = useCallback(() => {
+  const sendAiMessage = useCallback(async () => {
     if (!aiInput.trim()) return;
     const newChat = [...aiChat, { role: "user", text: aiInput }];
     setAiChat(newChat);
     setAiInput("");
-    setTimeout(() => {
-      const responses: Record<string, string> = {
-        "hello": "Hello! I'm your AI assistant for the Egyptian English curriculum. How can I help?",
-        "السلام": "وعليكم السلام! أنا المساعد الذكي للمنهج المصري. كيف أساعدك؟",
-      };
-      const reply = responses[aiInput.toLowerCase()] || (lang === "ar" ? "شكراً لسؤالك. يمكنك مراجعة الدروس أو الامتحانات للمزيد من المعلومات." : "Thanks for your question. Check lessons or exams for more info.");
-      const newChat = [...aiChat, { role: "ai", text: reply }]; setAiChat(newChat);
-    }, 500);
+    try {
+      const reply = await sendGeminiMessage(aiInput, lang);
+      setAiChat([...newChat, { role: "ai", text: reply }]);
+    } catch {
+      setAiChat([...newChat, { role: "ai", text: lang === "ar" ? "عذراً، حدث خطأ. حاول مرة أخرى." : "Sorry, something went wrong. Please try again." }]);
+    }
   }, [aiInput, aiChat, setAiInput, setAiChat, lang]);
 
   return (
