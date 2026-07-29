@@ -16,7 +16,7 @@ export default function Footer({ lang }: FooterProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           <div>
             <Link href="/" className="flex items-center gap-2.5 font-bold text-lg text-white mb-4">
-              <IoSchool className="text-primary text-xl" />
+              <img src="https://i.ibb.co/C5gmLKTG/Favicon.png" alt="Logo" className="w-8 h-8 rounded-full object-cover" />
               <span>Miss Shereen Elmairy</span>
             </Link>
             <p className="text-sm leading-relaxed mb-5 text-white/60">

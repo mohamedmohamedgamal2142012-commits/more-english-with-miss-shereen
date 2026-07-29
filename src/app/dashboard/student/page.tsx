@@ -870,7 +870,7 @@ export default function StudentDashboard() {
     <div className="flex min-h-screen bg-bg" dir={lang === "ar" ? "rtl" : "ltr"}>
       <aside className={`fixed md:static inset-y-0 left-0 z-30 w-[260px] bg-white border-r border-border flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
         <div className="p-5 border-b border-border flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2.5 font-bold text-base"><IoSchool className="text-primary" />{lang === "ar" ? "الطالب" : "Student"}</Link>
+          <Link href="/" className="flex items-center gap-2.5 font-bold text-base"><img src="https://i.ibb.co/C5gmLKTG/Favicon.png" alt="Logo" className="w-7 h-7 rounded-full object-cover" />{lang === "ar" ? "الطالب" : "Student"}</Link>
         </div>
         <nav className="p-3 flex-1 overflow-y-auto">
           {sidebarItems.map(item => (

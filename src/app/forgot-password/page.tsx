@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-[420px] bg-white rounded-[28px] p-9 shadow-lg border border-border">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 font-bold text-lg gradient-text mb-6">
-            <IoSchool className="text-primary text-xl" />
+            <img src="https://i.ibb.co/C5gmLKTG/Favicon.png" alt="Logo" className="w-8 h-8 rounded-full object-cover" />
             Miss Shereen
           </Link>
           <h2 className="text-2xl font-bold mb-1">{t("forgotTitle")}</h2>

@@ -1070,7 +1070,7 @@ export default function AdminDashboard() {
     <div className="flex min-h-screen bg-bg" dir={lang === "ar" ? "rtl" : "ltr"}>
       <aside className={`fixed md:static inset-y-0 left-0 z-30 w-[260px] bg-[#1F2937] text-white/80 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
         <div className="p-5 border-b border-white/10 flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2.5 font-bold text-base text-white"><IoSchool className="text-primary" /> Admin</Link>
+          <Link href="/" className="flex items-center gap-2.5 font-bold text-base text-white"><img src="https://i.ibb.co/C5gmLKTG/Favicon.png" alt="Logo" className="w-7 h-7 rounded-full object-cover" /> Admin</Link>
         </div>
         <nav className="p-3 flex-1 overflow-y-auto">
           {sidebarItems.map(item => (
