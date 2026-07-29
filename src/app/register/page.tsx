@@ -13,6 +13,8 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [parentName, setParentName] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -38,7 +40,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!name || !email || !phone || !password || !confirm) {
+    if (!name || !email || !phone || !parentName || !parentPhone || !password || !confirm) {
       setError("Please fill in all fields");
       return;
     }
@@ -52,7 +54,7 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      await register(email, password, name, phone);
+      await register(email, password, name, phone, parentName, parentPhone);
       const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
       if (!isAdmin) {
         setRegistered(true);
@@ -132,6 +134,14 @@ export default function RegisterPage() {
           <div>
             <label className="block text-sm font-medium mb-1.5 text-text">{t("phone")}</label>
             <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+20 100 123 4567" className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-text">{t("parentName")}</label>
+            <input type="text" value={parentName} onChange={(e) => setParentName(e.target.value)} placeholder={lang === "ar" ? "اسم ولي الأمر" : "Parent Name"} className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-text">{t("parentPhone")}</label>
+            <input type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder={lang === "ar" ? "رقم ولي الأمر" : "Parent Phone"} className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5 text-text">{t("password")}</label>

@@ -16,9 +16,11 @@ import {
   fetchTransactions, addTransaction,
   fetchReports, saveReport,
   fetchNotifications, sendNotification, deleteNotification,
-  updateUserProfile
+  updateUserProfile,
+  fetchWalletPromos, createWalletPromo, validateWalletPromo,
+  deleteWalletPromo
 } from "@/lib/firestore-utils";
-import type { AppUser, Course, Lesson, Exam, ExamResult, Homework, HomeworkSubmission, AppFile, WalletTransaction, Report, Notification } from "@/lib/types";
+import type { AppUser, Course, Lesson, Exam, ExamResult, Homework, HomeworkSubmission, AppFile, WalletTransaction, Report, Notification, WalletPromo } from "@/lib/types";
 import {
   IoSchool, IoNotifications, IoLogOut, IoMenu, IoGrid,
   IoPeople, IoBook, IoCreate, IoDocumentText, IoTrash,
@@ -29,9 +31,9 @@ import {
 } from "react-icons/io5";
 import { FaUserGraduate, FaUsers, FaBookOpen, FaPencilAlt, FaChalkboardTeacher, FaCreditCard, FaFileAlt, FaRobot, FaGamepad, FaChartBar, FaWhatsapp } from "react-icons/fa";
 
-type ATab = "overview" | "students" | "requests" | "courses" | "lessons" | "files" | "wallet" | "exams" | "homework" | "reports" | "notifications" | "settings";
+type ATab = "overview" | "students" | "requests" | "courses" | "lessons" | "files" | "wallet" | "wallet-promos" | "exams" | "homework" | "reports" | "notifications" | "settings";
 
-type ModalType = "course" | "lesson" | "exam" | "homework" | "wallet" | "report" | "notif";
+type ModalType = "course" | "lesson" | "exam" | "homework" | "wallet" | "promo" | "report" | "notif";
 
 interface AdminTabProps {
   lang: "en" | "ar";
@@ -45,6 +47,7 @@ interface AdminTabProps {
   homework: Homework[];
   files: AppFile[];
   transactions: WalletTransaction[];
+  walletPromos: WalletPromo[];
   reports: Report[];
   notifications: Notification[];
   showModal: boolean;
@@ -59,6 +62,10 @@ interface AdminTabProps {
   setWalletForm: (f: any) => void;
   showWalletModal: boolean;
   setShowWalletModal: (v: boolean) => void;
+  promoForm: any;
+  setPromoForm: (f: any) => void;
+  showPromoModal: boolean;
+  setShowPromoModal: (v: boolean) => void;
   loadAll: () => Promise<void>;
   handleSubmit: (e: FormEvent) => Promise<void>;
   handleDelete: (type: "course" | "lesson" | "exam" | "homework", id: string) => Promise<void>;
@@ -153,7 +160,7 @@ const StudentsTab = memo(function StudentsTab(p: AdminTabProps) {
                 <td className="px-4 py-3.5 border-b border-border">
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${s.status === "active" ? "bg-green-100 text-green-800" : s.status === "pending" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>{s.status}</span>
                 </td>
-                <td className="px-4 py-3.5 border-b border-border">{s.wallet || 0}</td>
+                <td className="px-4 py-3.5 border-b border-border">{s.wallet || 0} {lang === "ar" ? "ج.م" : "EGP"}</td>
                 <td className="px-4 py-3.5 border-b border-border">
                   <div className="flex gap-2">
                     {s.status === "pending" && <button onClick={() => { updateUserStatus(s.id, "active"); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs cursor-pointer border-none" title="Approve"><IoCheckmarkCircle /></button>}
@@ -242,6 +249,7 @@ const LessonsTab = memo(function LessonsTab(p: AdminTabProps) {
         <div>
           <button onClick={() => setPlaying(null)} className="flex items-center gap-2 text-sm text-primary mb-4 cursor-pointer bg-transparent border-none"><IoArrowBack /> {lang === "ar" ? "عودة" : "Back"}</button>
           <h4 className="text-xl font-bold mb-3">{playing.title}</h4>
+          {playing.thumbnail && <img src={playing.thumbnail} className="w-full h-48 object-cover rounded-xl mb-4" alt={playing.title} />}
           {playing.videoUrl && <div className="aspect-video bg-black rounded-xl overflow-hidden mb-4"><iframe src={getYouTubeEmbedUrl(playing.videoUrl)} className="w-full h-full" allowFullScreen /></div>}
           {playing.embedCode && <div className="mb-4" dangerouslySetInnerHTML={{ __html: playing.embedCode }} />}
           <div className="text-sm mb-2">{lang === "ar" ? "الكودات:" : "Codes:"} {playing.codes?.join(", ") || "—"}</div>
@@ -252,6 +260,7 @@ const LessonsTab = memo(function LessonsTab(p: AdminTabProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {lessons.map(l => (
             <div key={l.id} className="bg-white rounded-[20px] p-4 shadow-sm border border-border">
+              {l.thumbnail && <img src={l.thumbnail} className="w-full h-32 object-cover rounded-xl mb-3" alt={l.title} />}
               <h4 className="font-semibold">{l.title}</h4>
               <p className="text-xs text-text-light mt-1">{l.courseName} • {l.viewers ? Object.keys(l.viewers).length : 0} views</p>
               <div className="flex gap-2 mt-2">
@@ -363,7 +372,79 @@ const WalletTab = memo(function WalletTab(p: AdminTabProps) {
   );
 });
 
-// ====== EXAMS ======
+// ====== WALLET PROMOS ======
+const WalletPromosTab = memo(function WalletPromosTab(p: AdminTabProps) {
+  const { lang, walletPromos, loadAll } = p;
+  const [generating, setGenerating] = useState(false);
+  const [promoMsg, setPromoMsg] = useState("");
+  const generateCode = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  };
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setPromoMsg("");
+    const code = generateCode();
+    try {
+      await createWalletPromo(code, p.form.promoAmount || 0, p.form.promoMaxUses || 1, p.form.promoExpires || null);
+      setPromoMsg(`${lang === "ar" ? "تم إنشاء الكود" : "Code created"}: ${code}`);
+      loadAll();
+    } catch (e: any) { setPromoMsg(e.message); }
+    setGenerating(false);
+  };
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-lg font-semibold">{lang === "ar" ? "قسائم المحفظة" : "Wallet Promos"}</h3>
+        <button onClick={() => p.openAdd("promo")} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إنشاء كود" : "Create Code"}</button>
+      </div>
+      <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead><tr>{[lang === "ar" ? "الكود" : "Code", lang === "ar" ? "المبلغ" : "Amount", lang === "ar" ? "الاستخدامات" : "Uses", lang === "ar" ? "انتهاء" : "Expires", lang === "ar" ? "الحالة" : "Status", lang === "ar" ? "إجراءات" : "Actions"].map(h => <th key={h} className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{h}</th>)}</tr></thead>
+          <tbody>
+            {walletPromos.map(promo => {
+              const used = (promo.usedBy || []).length;
+              const expired = promo.expiresAt && new Date(promo.expiresAt.toDate()) < new Date();
+              const exhausted = used >= promo.maxUses;
+              return (
+                <tr key={promo.id} className="hover:bg-bg">
+                  <td className="px-4 py-3.5 border-b border-border font-mono text-sm">{promo.code}</td>
+                  <td className="px-4 py-3.5 border-b border-border font-bold">{promo.amount} EGP</td>
+                  <td className="px-4 py-3.5 border-b border-border">{used}/{promo.maxUses}</td>
+                  <td className="px-4 py-3.5 border-b border-border text-text-light">{promo.expiresAt ? promo.expiresAt.toDate?.().toLocaleDateString() : lang === "ar" ? "لا يوجد" : "None"}</td>
+                  <td className="px-4 py-3.5 border-b border-border">
+                    {expired ? <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">{lang === "ar" ? "منتهي" : "Expired"}</span> :
+                      exhausted ? <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">{lang === "ar" ? "مكتمل" : "Exhausted"}</span> :
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">{lang === "ar" ? "نشط" : "Active"}</span>}
+                  </td>
+                  <td className="px-4 py-3.5 border-b border-border">
+                    <button onClick={async () => { await deleteWalletPromo(promo.id); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs cursor-pointer border-none" title="Delete"><IoTrash /></button>
+                  </td>
+                </tr>
+              );
+            })}
+            {walletPromos.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-text-light">{lang === "ar" ? "لا توجد قسائم" : "No promos yet"}</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {p.showPromoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => p.setShowPromoModal(false)}>
+          <div className="bg-white rounded-[20px] p-6 w-full max-w-lg m-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{lang === "ar" ? "إنشاء كود قسيمة" : "Create Promo Code"}</h3><button onClick={() => p.setShowPromoModal(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
+            <div className="space-y-4">
+              <input type="number" placeholder={lang === "ar" ? "المبلغ (ج.م)" : "Amount (EGP)"} value={p.form.promoAmount || ""} onChange={e => p.setForm({ ...p.form, promoAmount: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" min={1} required />
+              <input type="number" placeholder={lang === "ar" ? "الحد الأقصى للاستخدامات" : "Max Uses"} value={p.form.promoMaxUses || ""} onChange={e => p.setForm({ ...p.form, promoMaxUses: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" min={1} required />
+              <input type="date" placeholder={lang === "ar" ? "تاريخ الانتهاء" : "Expiry Date"} value={p.form.promoExpires || ""} onChange={e => p.setForm({ ...p.form, promoExpires: e.target.value || null })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+              <button type="button" onClick={handleGenerate} disabled={generating} className="w-full px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none disabled:opacity-50">{generating ? "..." : (lang === "ar" ? "إنشاء الكود" : "Generate Code")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
 const ExamsTab = memo(function ExamsTab(p: AdminTabProps) {
   const { lang, exams, courses, showModal, setShowModal, modalType, form, setForm, editId, loadAll, openAdd, openEdit, handleDelete } = p;
   const [examQuestions, setExamQuestions] = useState<{ id: string; type: string; question: string; options: string[]; correctAnswer: string; points: number }[]>([]);
@@ -468,7 +549,7 @@ const HomeworkTab = memo(function HomeworkTab(p: AdminTabProps) {
                     {sub.grade !== undefined ? (
                       <div className="text-right">
                         <span className="text-lg font-bold text-primary">{sub.grade}</span>
-                        {sub.reward ? <p className="text-xs text-green-600">+{sub.reward} pts</p> : null}
+                        {sub.reward ? <p className="text-xs text-green-600">+{sub.reward} {lang === "ar" ? "ج.م" : "EGP"}</p> : null}
                         <p className="text-xs text-text-light">{sub.annotation}</p>
                       </div>
                     ) : (
@@ -639,7 +720,7 @@ const SettingsTab = memo(function SettingsTab(p: AdminTabProps) {
 // ====== MODAL ======
 const Modal = memo(function Modal(p: AdminTabProps) {
   const { showModal, setShowModal, modalType, lang, form, setForm, editId, courses, handleSubmit, openAdd } = p;
-  if (!showModal || modalType === "exam" || modalType === "report" || modalType === "notif" || modalType === "wallet") return null;
+  if (!showModal || modalType === "exam" || modalType === "report" || modalType === "notif" || modalType === "wallet" || modalType === "promo") return null;
   const titleMap = { course: lang === "ar" ? "إضافة/تعديل كورس" : "Add/Edit Course", lesson: lang === "ar" ? "إضافة/تعديل درس" : "Add/Edit Lesson", homework: lang === "ar" ? "إضافة/تعديل واجب" : "Add/Edit Homework" };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowModal(false)}>
@@ -661,8 +742,10 @@ const Modal = memo(function Modal(p: AdminTabProps) {
           {modalType === "lesson" && (
             <><input placeholder={lang === "ar" ? "عنوان الدرس" : "Lesson Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
             <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-            <select value={form.lessonType || "text"} onChange={e => setForm({ ...form, lessonType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="text">{lang === "ar" ? "درس نصي" : "Text Lesson"}</option><option value="video">{lang === "ar" ? "درس فيديو" : "Video Lesson"}</option></select>
-            <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => { const v = e.target.value; let embed = form.embedCode; if (v.includes("youtube.com/watch")) { const id = v.split("v=")[1]?.split("&")[0]; if (id) embed = `https://www.youtube.com/embed/${id}`; } setForm({ ...form, videoUrl: v, embedCode: embed }); }} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+             <select value={form.lessonType || "text"} onChange={e => setForm({ ...form, lessonType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="text">{lang === "ar" ? "درس نصي" : "Text Lesson"}</option><option value="video">{lang === "ar" ? "درس فيديو" : "Video Lesson"}</option></select>
+             <input type="file" accept="image/png,image/jpeg" onChange={e => { const f = e.target.files?.[0]; if (f) { if (!["image/png","image/jpeg"].includes(f.type)) { alert(lang === "ar" ? "الصيغة غير مدعومة (PNG/JPG فقط)" : "Unsupported format (PNG/JPG only)"); e.target.value = ""; return; } if (f.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); e.target.value = ""; return; } setForm({ ...form, thumbnail: f }); }} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+             {form.thumbnail && typeof form.thumbnail === "string" && <img src={form.thumbnail} className="w-full h-32 object-cover rounded-xl" alt="thumbnail" />}
+             <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => { const v = e.target.value; let embed = form.embedCode; if (v.includes("youtube.com/watch")) { const id = v.split("v=")[1]?.split("&")[0]; if (id) embed = `https://www.youtube.com/embed/${id}`; } setForm({ ...form, videoUrl: v, embedCode: embed }); }} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
             <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
             <input placeholder={lang === "ar" ? "رابط PDF" : "PDF URL"} value={form.pdfUrl || ""} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
             <textarea placeholder={lang === "ar" ? "المحتوى" : "Content"} value={form.content || ""} onChange={e => setForm({ ...form, content: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={4} />
@@ -717,6 +800,8 @@ export default function AdminDashboard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [walletForm, setWalletForm] = useState({ studentId: "", txType: "credit" as "credit" | "debit", amount: 0, description: "" });
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [promoForm, setPromoForm] = useState({ promoAmount: 0, promoMaxUses: 1, promoExpires: "" });
+  const [showPromoModal, setShowPromoModal] = useState(false);
 
   useEffect(() => { setLang(document.documentElement.lang === "ar" ? "ar" : "en"); }, []);
 
@@ -734,14 +819,14 @@ export default function AdminDashboard() {
   const loadAll = async () => {
     setLoadingData(true);
     const safe = <T,>(p: Promise<T>): Promise<T> => p.catch(e => { console.error(e); return [] as any; });
-    const [s, p, c, l, e, er, h, f, tx, r, n] = await Promise.all([
+    const [s, p, c, l, e, er, h, f, tx, wp, r, n] = await Promise.all([
       safe(fetchStudents()), safe(fetchPendingStudents()), safe(fetchCourses()), safe(fetchLessons()),
       safe(fetchExams()), safe(fetchExamResults()), safe(fetchHomework()), safe(fetchFiles()),
-      safe(fetchTransactions()), safe(fetchReports()), safe(fetchNotifications())
+      safe(fetchTransactions()), safe(fetchWalletPromos()), safe(fetchReports()), safe(fetchNotifications())
     ]);
     setStudents(s); setPendingStudents(p); setCourses(c); setLessons(l);
     setExams(e); setExamResults(er); setHomework(h); setFiles(f);
-    setTransactions(tx); setReports(r); setNotifications(n);
+    setTransactions(tx); setWalletPromos(wp); setReports(r); setNotifications(n);
     setLoadingData(false);
   };
 
@@ -758,16 +843,29 @@ export default function AdminDashboard() {
     const map: Record<string, string> = { course: "courses", lesson: "lessons", exam: "exams", homework: "homework" };
     const col = map[modalType];
     if (modalType === "course") { if (editId) await saveCourse(editId, form); else await saveCourse(null, form); }
-    else if (modalType === "lesson") {
-      const data = { ...form, codes: form.codes ? form.codes.split("\n").map((c: string) => c.trim()).filter(Boolean) : [], viewers: form.viewers || {} };
-      if (editId) await saveLesson(editId, data); else await saveLesson(null, data);
-    }
+     else if (modalType === "lesson") {
+       const { thumbnail: thumbFile, ...restForm } = form;
+       let thumbnailUrl = editId ? form.thumbnail : undefined;
+       if (thumbFile instanceof File) {
+         const allowedTypes = ["image/png", "image/jpeg"];
+         if (!allowedTypes.includes(thumbFile.type)) { alert(lang === "ar" ? "الصيغة غير مدعومة (PNG/JPG فقط)" : "Unsupported format (PNG/JPG only)"); return; }
+         if (thumbFile.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); return; }
+         thumbnailUrl = await uploadFile(thumbFile, `lesson-thumbnails/${Date.now()}_${thumbFile.name}`);
+       }
+       const data = { ...restForm, thumbnail: thumbnailUrl, codes: form.codes ? form.codes.split("\n").map((c: string) => c.trim()).filter(Boolean) : [], viewers: form.viewers || {} };
+       if (editId) await saveLesson(editId, data); else await saveLesson(null, data);
+     }
     else if (modalType === "exam") {
       const data = { ...form };
       if (editId) await saveExam(editId, data); else await saveExam(null, data);
     }
     else if (modalType === "homework") { if (editId) await saveHomework(editId, form); else await saveHomework(null, form); }
     else if (modalType === "wallet") { await addTransaction(form.studentId, form.txType, Number(form.amount), form.description); }
+    else if (modalType === "promo") {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let code = ""; for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      await createWalletPromo(code, Number(form.promoAmount) || 0, Number(form.promoMaxUses) || 1, form.promoExpires ? new Date(form.promoExpires) : null);
+    }
     else if (modalType === "report") { const s = students.find(x => x.id === form.studentId); await saveReport({ ...form, studentName: s?.name || "" }); }
     else if (modalType === "notif") { await sendNotification({ title: form.title, body: form.body, forStudents: true }); }
     setShowModal(false);
@@ -804,6 +902,7 @@ export default function AdminDashboard() {
     { key: "lessons", icon: IoBook, label: lang === "ar" ? "الدروس" : "Lessons" },
     { key: "files", icon: FaFileAlt, label: lang === "ar" ? "الملفات" : "Files" },
     { key: "wallet", icon: IoWallet, label: lang === "ar" ? "المحفظة" : "Wallet" },
+    { key: "wallet-promos", icon: IoLink, label: lang === "ar" ? "قسائم المحفظة" : "Wallet Promos" },
     { key: "exams", icon: IoCreate, label: lang === "ar" ? "الامتحانات" : "Exams" },
     { key: "homework", icon: IoDocumentText, label: lang === "ar" ? "الواجبات" : "Homework" },
     { key: "reports", icon: IoStatsChart, label: lang === "ar" ? "التقارير" : "Reports" },
@@ -813,9 +912,10 @@ export default function AdminDashboard() {
 
   const tabProps: AdminTabProps = {
     lang, user, students, pendingStudents, courses, lessons, exams, examResults,
-    homework, files, transactions, reports, notifications,
+    homework, files, transactions, walletPromos, reports, notifications,
     showModal, setShowModal, modalType, form, setForm, editId,
     selectedFile, setSelectedFile, walletForm, setWalletForm, showWalletModal, setShowWalletModal,
+    promoForm, setPromoForm, showPromoModal, setShowPromoModal,
     loadAll, handleSubmit, handleDelete, handleGrade, handleFileUpload, openAdd, openEdit,
   };
 
@@ -828,6 +928,7 @@ export default function AdminDashboard() {
       case "lessons": return <LessonsTab {...tabProps} />;
       case "files": return <FilesTab {...tabProps} />;
       case "wallet": return <WalletTab {...tabProps} />;
+       case "wallet-promos": return <WalletPromosTab {...tabProps} />;
       case "exams": return <ExamsTab {...tabProps} />;
       case "homework": return <HomeworkTab {...tabProps} />;
       case "reports": return <ReportsTab {...tabProps} />;

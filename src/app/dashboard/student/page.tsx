@@ -7,24 +7,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   IoSchool, IoBook, IoTime, IoGrid, IoStatsChart, IoRibbon, IoCreate,
   IoNotifications, IoCalendar, IoPerson, IoLogOut, IoMenu, IoWarning,
-  IoCheckmarkCircle, IoStar, IoWallet, IoGameController, IoChatbubbles,
+  IoCheckmarkCircle, IoStar, IoWallet, 
+IoChatbubbles,
   IoTrophy, IoDocuments, IoPeople, IoHappy, IoFlash, IoLockClosed,
   IoArrowBack, IoAdd, IoClose, IoCloudUpload, IoTrash, IoPlay,
   IoCheckmark, IoReload, IoPencil, IoEyeOff, IoEye
 } from "react-icons/io5";
-import { FaFileAlt, FaUserGraduate, FaRobot, FaTrophy, FaGamepad, FaWhatsapp } from "react-icons/fa";
+import { FaFileAlt, FaUserGraduate, FaRobot, FaWhatsapp } from "react-icons/fa";
 import { getTranslation } from "@/lib/i18n";
 import { sendGeminiMessage } from "@/lib/gemini";
 import {
   fetchLessons, fetchExams, fetchHomework, fetchFiles, fetchTransactions,
   fetchReports, fetchExamResults, submitExamResult, submitHomework,
-  uploadFile, incrementLessonView, updateUserProfile, saveGameScore,
-  fetchMessages, sendMessage, fetchLeaderboard, fetchCourses
+  uploadFile, incrementLessonView, updateUserProfile,
+  fetchMessages, sendMessage, fetchLeaderboard, fetchCourses,
+  fetchWalletPromos, validateWalletPromo
 } from "@/lib/firestore-utils";
 import { BADGES, getYouTubeEmbedUrl } from "@/lib/types";
 import type { Lesson, Exam, ExamQuestion, Homework, AppFile, WalletTransaction, Report, ExamResult, ChatMessage } from "@/lib/types";
 
-type STab = "home" | "lessons" | "wallet" | "exams" | "homework" | "files" | "reports" | "achievements" | "profile" | "parent" | "ai" | "game";
+type STab = "home" | "lessons" | "wallet" | "exams" | "homework" | "files" | "reports" | "achievements" | "profile" | "parent" | "ai";
 
 interface HomeTabProps { lang: string; lessons: Lesson[]; examResults: ExamResult[]; exams: Exam[]; wallet: number; badges: string[]; userId?: string; points: number; completedExams: number; }
 interface LessonsTabProps { lang: string; lessons: Lesson[]; userId?: string; }
@@ -38,7 +40,6 @@ interface AchievementsTabProps { lang: string; badges: string[]; }
 interface ProfileTabProps { lang: string; profileForm: any; setProfileForm: (v: any) => void; userId?: string; updateUserProfile: (id: string, data: any) => Promise<void>; wallet: number; points: number; badges: string[]; streak: number; }
 interface ParentTabProps { lang: string; parentName: string; parentPhone: string; }
 interface AITabProps { lang: "en" | "ar"; aiChat: { role: string; text: string }[]; aiInput: string; setAiInput: (v: string) => void; setAiChat: (v: { role: string; text: string }[]) => void; }
-interface GameTabProps { lang: string; streak: number; points: number; userId?: string; saveGameScore: (data: any) => Promise<void>; setPoints: (v: number) => void; gameType: string | null; setGameType: (v: string | null) => void; gameScore: number; setGameScore: (v: number) => void; gameActive: boolean; setGameActive: (v: boolean) => void; }
 interface CommunityModalProps { lang: string; showCommunity: boolean; setShowCommunity: (v: boolean) => void; channelId: string; setChannelId: (v: string) => void; chatText: string; setChatText: (v: string) => void; chatMessages: ChatMessage[]; setChatMessages: (v: ChatMessage[]) => void; userId?: string; userName: string; fetchMessages: (channelId: string) => Promise<ChatMessage[]>; sendMessage: (data: any) => Promise<void>; }
 interface LeaderboardModalProps { lang: string; showLeaderboard: boolean; setShowLeaderboard: (v: boolean) => void; leaderboard: any[]; fetchLeaderboard: () => Promise<any[]>; }
 
@@ -138,12 +139,40 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId }: LessonsTa
 });
 
 const WalletTabComp = memo(function WalletTabComp({ lang, wallet, transactions }: WalletTabProps) {
+  const [promoCode, setPromoCode] = useState("");
+  const [promoMsg, setPromoMsg] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const handleRedeem = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoMsg("");
+    try {
+      const result = await validateWalletPromo(promoCode.trim(), user?.uid || "");
+      if (result.valid) {
+        setPromoMsg(`${lang === "ar" ? "تم إضافة" : "Credited"} ${result.amount} EGP ${lang === "ar" ? "للمحفظة" : "to wallet"}`);
+      } else {
+        setPromoMsg(result.message);
+      }
+    } catch (e: any) { setPromoMsg(e.message); }
+    setPromoLoading(false);
+  };
   return (
     <div>
       <div className="bg-gradient-to-r from-primary to-accent rounded-[20px] p-6 text-white mb-6">
         <p className="text-sm opacity-80">{lang === "ar" ? "رصيد المحفظة" : "Wallet Balance"}</p>
-        <p className="text-3xl font-bold">{wallet} {lang === "ar" ? "نقطة" : "pts"}</p>
+        <p className="text-3xl font-bold">{wallet} {lang === "ar" ? "ج.م" : "EGP"}</p>
       </div>
+      <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border mb-6">
+        <h4 className="text-base font-semibold mb-3">{lang === "ar" ? "استبدال كود القسيمة" : "Redeem Promo Code"}</h4>
+        <div className="flex gap-2">
+          <input value={promoCode} onChange={e => setPromoCode(e.target.value)} placeholder={lang === "ar" ? "أدخل الكود" : "Enter code"} className="flex-1 px-4 py-3 border border-border rounded-xl text-sm" />
+          <button onClick={handleRedeem} disabled={promoLoading} className="px-6 py-3 rounded-full font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none disabled:opacity-50 text-sm">{promoLoading ? "..." : (lang === "ar" ? "استبدال" : "Redeem")}</button>
+        </div>
+        {promoMsg && <p className={`mt-2 text-sm ${promoMsg.includes("Credited") || promoMsg.includes("تم إضافة") ? "text-green-600" : "text-red-600"}`}>{promoMsg}</p>}
+      </div>
+      <a href="https://wa.me/201001234567" target="_blank" className="flex items-center gap-2 px-5 py-3 rounded-xl bg-green-50 text-green-700 text-sm font-medium cursor-pointer mb-6">
+        <FaWhatsapp className="text-lg" /> {lang === "ar" ? "شحن المحفظة عبر واتساب" : "Top Up Wallet via WhatsApp"}
+      </a>
       <h4 className="text-base font-semibold mb-4">{lang === "ar" ? "سجل المعاملات" : "Transaction History"}</h4>
       <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border">
         {transactions.length === 0 ? <p className="text-sm text-text-light">{lang === "ar" ? "لا توجد معاملات" : "No transactions"}</p> :
@@ -497,56 +526,15 @@ const AITabComp = memo(function AITabComp({ lang, aiChat, aiInput, setAiInput, s
             </div>
           ))}
         </div>
-        <div className="p-3 border-t border-border flex gap-2">
-          <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendAiMessage()} placeholder={lang === "ar" ? "اسأل سؤالاً..." : "Ask a question..."} className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm" />
-          <button onClick={sendAiMessage} className="px-4 py-2.5 rounded-xl bg-primary text-white cursor-pointer border-none">{lang === "ar" ? "إرسال" : "Send"}</button>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-const GameTabComp = memo(function GameTabComp({ lang, streak, points, userId, saveGameScore, setPoints, gameType, setGameType, gameScore, setGameScore, gameActive, setGameActive }: GameTabProps) {
-  const startGame = (type: string) => { setGameType(type); setGameScore(0); setGameActive(true); };
-  const endGame = useCallback(async () => {
-    setGameActive(false);
-    await saveGameScore({ studentId: userId, gameType, score: gameScore });
-    const newPoints = points + gameScore;
-    const { updateDoc, doc } = await import("firebase/firestore");
-    const { db } = await import("@/lib/firebase");
-    await updateDoc(doc(db, "users", userId!), { points: newPoints });
-    setPoints(newPoints);
-  }, [gameType, gameScore, points, saveGameScore, setPoints, userId]);
-
-  return (
-    <div>
-      <h3 className="text-lg font-semibold mb-2">{lang === "ar" ? "لعبة اليوم" : "Daily Game"}</h3>
-      <p className="text-sm text-text-light mb-5">{lang === "ar" ? `🔥 Streak: ${streak} أيام` : `🔥 Streak: ${streak} days`}</p>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {[
-          { key: "quiz", icon: "🧠", name: lang === "ar" ? "اختبار سريع" : "Quick Quiz" },
-          { key: "memory", icon: "🎮", name: lang === "ar" ? "الذاكرة" : "Memory" },
-          { key: "word", icon: "📖", name: lang === "ar" ? "كلمة اليوم" : "Word" },
-          { key: "math", icon: "🔢", name: lang === "ar" ? "رياضيات" : "Math" },
-          { key: "typing", icon: "⌨️", name: lang === "ar" ? "سرعة الكتابة" : "Typing" },
-        ].map(g => (
-          <div key={g.key} className="bg-white rounded-[20px] p-5 shadow-sm border border-border text-center hover:-translate-y-0.5 transition-all cursor-pointer" onClick={() => startGame(g.key)}>
-            <div className="text-4xl mb-2">{g.icon}</div>
-            <h4 className="font-semibold text-sm">{g.name}</h4>
-          </div>
-        ))}
-      </div>
-      {gameActive && (
-        <div className="mt-6 bg-white rounded-[20px] p-6 shadow-sm border border-border text-center">
-          <p className="text-lg font-semibold mb-3">{lang === "ar" ? `تلعب: ${gameType}` : `Playing: ${gameType}`}</p>
-          <p className="text-3xl font-bold text-primary mb-4">{gameScore}</p>
-          <button onClick={() => setGameScore(gameScore + 10)} className="px-6 py-3 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white mr-3 cursor-pointer border-none">+10</button>
-          <button onClick={endGame} className="px-6 py-3 rounded-full text-sm font-semibold border border-border cursor-pointer bg-white">{lang === "ar" ? "إنهاء" : "End Game"}</button>
-        </div>
-      )}
-    </div>
-  );
-});
+<div className="p-3 border-t border-border flex gap-2">
+           <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendAiMessage()} placeholder={lang === "ar" ? "اسأل سؤالاً..." : "Ask a question..."} className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm" />
+           <button onClick={sendAiMessage} className="px-4 py-2.5 rounded-xl bg-primary text-white cursor-pointer border-none">{lang === "ar" ? "إرسال" : "Send"}</button>
+         </div>
+         <a href="https://wa.me/201001234567" target="_blank" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 text-green-700 text-sm font-medium cursor-pointer border border-border"><FaWhatsapp /> {lang === "ar" ? "شحن المحفظة عبر واتساب" : "Top Up Wallet via WhatsApp"}</a>
+       </div>
+     </div>
+   );
+ });
 
 const CommunityModalComp = memo(function CommunityModalComp({ lang, showCommunity, setShowCommunity, channelId, setChannelId, chatText, setChatText, chatMessages, setChatMessages, userId, userName, fetchMessages, sendMessage }: CommunityModalProps) {
   useEffect(() => {
@@ -564,8 +552,8 @@ const CommunityModalComp = memo(function CommunityModalComp({ lang, showCommunit
     setChatMessages(msgs);
   }, [channelId, chatText, userId, userName, sendMessage, setChatText]);
   if (!showCommunity) return null;
-  const channels = ["general", "english", "homework", "games", "random"];
-  const channelNames: Record<string, string> = { general: lang === "ar" ? "عام" : "General", english: "English", homework: lang === "ar" ? "واجبات" : "Homework", games: lang === "ar" ? "ألعاب" : "Games", random: lang === "ar" ? "عشوائي" : "Random" };
+  const channels = ["general", "english", "homework", "random"];
+  const channelNames: Record<string, string> = { general: lang === "ar" ? "عام" : "General", english: "English", homework: lang === "ar" ? "واجبات" : "Homework", random: lang === "ar" ? "عشوائي" : "Random" };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowCommunity(false)}>
       <div className="bg-white rounded-[20px] w-full max-w-lg max-h-[80vh] flex flex-col m-4" onClick={e => e.stopPropagation()}>
@@ -660,9 +648,6 @@ export default function StudentDashboard() {
   const [parentPhone, setParentPhone] = useState("");
   const [showCommunity, setShowCommunity] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [gameType, setGameType] = useState<string | null>(null);
-  const [gameScore, setGameScore] = useState(0);
-  const [gameActive, setGameActive] = useState(false);
 
   useEffect(() => { setLang(document.documentElement.lang === "ar" ? "ar" : "en"); }, []);
 
@@ -725,6 +710,10 @@ export default function StudentDashboard() {
   if (loading || !user) return <div className="min-h-screen flex items-center justify-center bg-bg"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   if (userStatus === "pending" || userStatus === "banned") {
+    if (userStatus === "pending" && (!parentName || !parentPhone)) {
+      router.push("/parent-setup");
+      return <div className="min-h-screen flex items-center justify-center bg-bg"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg px-6">
         <div className="text-center max-w-md">
@@ -751,7 +740,6 @@ export default function StudentDashboard() {
     { key: "profile" as STab, icon: IoPerson, label: lang === "ar" ? "الملف الشخصي" : "Profile" },
     { key: "parent" as STab, icon: IoPeople, label: lang === "ar" ? "ولي الأمر" : "Parent" },
     { key: "ai" as STab, icon: FaRobot, label: lang === "ar" ? "المساعد الذكي" : "AI Assistant" },
-    { key: "game" as STab, icon: FaGamepad, label: lang === "ar" ? "لعبة اليوم" : "Daily Game" },
   ];
 
   function renderTab() {
@@ -767,8 +755,7 @@ export default function StudentDashboard() {
       case "profile": return <ProfileTabComp lang={lang} profileForm={profileForm} setProfileForm={setProfileForm} userId={user?.uid} updateUserProfile={updateUserProfile} wallet={wallet} points={points} badges={badges} streak={streak} />;
       case "parent": return <ParentTabComp lang={lang} parentName={parentName} parentPhone={parentPhone} />;
       case "ai": return <AITabComp lang={lang} aiChat={aiChat} aiInput={aiInput} setAiInput={setAiInput} setAiChat={setAiChat} />;
-      case "game": return <GameTabComp lang={lang} streak={streak} points={points} userId={user?.uid} saveGameScore={saveGameScore} setPoints={setPoints} gameType={gameType} setGameType={setGameType} gameScore={gameScore} setGameScore={setGameScore} gameActive={gameActive} setGameActive={setGameActive} />;
-      default: return null;
+       default: return null;
     }
   }
 

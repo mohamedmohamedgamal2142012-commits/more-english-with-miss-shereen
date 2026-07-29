@@ -37,6 +37,7 @@ export interface Lesson {
   codes: string[];
   viewLimit: number;
   viewers: { [uid: string]: number };
+  thumbnail?: string;
   createdAt: any;
 }
 
@@ -124,6 +125,16 @@ export interface WalletTransaction {
   createdAt: any;
 }
 
+export interface WalletPromo {
+  id: string;
+  code: string;
+  amount: number;
+  maxUses: number;
+  usedBy: string[];
+  expiresAt: any;
+  createdAt: any;
+}
+
 export interface Report {
   id: string;
   studentId: string;
@@ -143,14 +154,6 @@ export interface Notification {
   createdAt: any;
 }
 
-export interface GameScore {
-  id: string;
-  studentId: string;
-  gameType: string;
-  score: number;
-  playedAt: any;
-}
-
 export interface ChatMessage {
   id: string;
   channelId: string;
@@ -166,8 +169,7 @@ export const BADGES = [
   { id: "star", icon: "⭐", nameEn: "Star Student", nameAr: "طالب نجم", descEn: "Top of the leaderboard", descAr: "الأول في الترتيب" },
   { id: "chat", icon: "💬", nameEn: "Chatter", nameAr: "ثرثار", descEn: "Send 50 messages", descAr: "أرسل 50 رسالة" },
   { id: "pencil", icon: "📝", nameEn: "Homework Hero", nameAr: "بطل الواجبات", descEn: "Complete 20 homework", descAr: "أكمل 20 واجب" },
-  { id: "wallet", icon: "💰", nameEn: "Saver", nameAr: "مدخر", descEn: "Save 1000 points", descAr: "ادخر 1000 نقطة" },
-  { id: "game", icon: "🎮", nameEn: "Gamer", nameAr: "لاعب", descEn: "Win 5 daily games", descAr: "اربح 5 ألعاب يومية" },
+  { id: "wallet", icon: "💰", nameEn: "Saver", nameAr: "مدخر", descEn: "Save 1000 EGP", descAr: "ادخر 1000 جنيه" },
   { id: "fire", icon: "🔥", nameEn: "On Fire", nameAr: "مشتعل", descEn: "7-day streak", descAr: "7 أيام متتالية" },
 ];
 

@@ -6,7 +6,8 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage
 import { db, storage } from "./firebase";
 import type {
   AppUser, Lesson, Course, Exam, ExamResult, Homework,
-  HomeworkSubmission, AppFile, WalletTransaction, Report, Notification, GameScore, ChatMessage
+HomeworkSubmission, AppFile, WalletTransaction, Report, 
+Notification, ChatMessage, WalletPromo
 } from "./types";
 
 // === Users ===
@@ -14,6 +15,12 @@ export async function fetchStudents() {
   const snap = await getDocs(collection(db, "users"));
   const list = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as AppUser));
   return list.filter(u => u.role === "student").sort((a, b) => ((b.createdAt as any)?.toDate?.() || 0) - ((a.createdAt as any)?.toDate?.() || 0));
+}
+
+export async function fetchActiveStudentsCount() {
+  const q = query(collection(db, "users"), where("role", "==", "student"), where("status", "==", "active"));
+  const snap = await getDocs(q);
+  return snap.size;
 }
 
 export async function fetchPendingStudents() {
@@ -238,6 +245,34 @@ export async function addTransaction(studentId: string, type: "credit" | "debit"
   }
 }
 
+export async function fetchWalletPromos() {
+  const snap = await getDocs(collection(db, "wallet-promos"));
+  return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as WalletPromo));
+}
+
+export async function createWalletPromo(code: string, amount: number, maxUses: number, expiresAt: any) {
+  const ref = doc(collection(db, "wallet-promos"));
+  await setDoc(ref, { code: code.toUpperCase(), amount, maxUses, usedBy: [], expiresAt, createdAt: serverTimestamp() });
+  return ref.id;
+}
+
+export async function validateWalletPromo(code: string, studentId: string) {
+  const q = query(collection(db, "wallet-promos"), where("code", "==", code.toUpperCase()));
+  const snap = await getDocs(q);
+  if (snap.empty) return { valid: false, message: "Invalid code" };
+  const promo = { id: snap.docs[0].id, ...(snap.docs[0].data() as any) } as WalletPromo;
+  if ((promo.usedBy || []).includes(studentId)) return { valid: false, message: "Code already used" };
+  if (promo.expiresAt && new Date(promo.expiresAt.toDate()) < new Date()) return { valid: false, message: "Code expired" };
+  if ((promo.usedBy || []).length >= promo.maxUses) return { valid: false, message: "Code max uses reached" };
+  await addTransaction(studentId, "credit", promo.amount, `Wallet promo: ${promo.code}`);
+  await updateDoc(doc(db, "wallet-promos", promo.id), { usedBy: [...(promo.usedBy || []), studentId] });
+  return { valid: true, amount: promo.amount, message: `${promo.amount} EGP credited to your wallet` };
+}
+
+export async function deleteWalletPromo(id: string) {
+  await deleteDoc(doc(db, "wallet-promos", id));
+}
+
 // === Reports ===
 export async function fetchReports(studentId?: string) {
   let q: any;
@@ -271,19 +306,6 @@ export async function sendNotification(data: Partial<Notification>) {
 
 export async function deleteNotification(id: string) {
   await deleteDoc(doc(db, "notifications", id));
-}
-
-// === Games ===
-export async function saveGameScore(data: Partial<GameScore>) {
-  data.playedAt = serverTimestamp() as any;
-  const ref = doc(collection(db, "game-scores"));
-  await setDoc(ref, data);
-}
-
-export async function fetchLeaderboard() {
-  const snap = await getDocs(collection(db, "users"));
-  const list = snap.docs.map(d => ({ id: d.id, name: d.data().name, points: d.data().points || 0 } as any));
-  return list.filter((u: any) => u.name).sort((a: any, b: any) => b.points - a.points).slice(0, 50);
 }
 
 // === Chat ===

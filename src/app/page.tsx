@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getTranslation } from "@/lib/i18n";
+import { fetchActiveStudentsCount } from "@/lib/firestore-utils";
 import {
-  IoSchool, IoStar, IoBook, IoPlay, IoPerson, IoTime, IoLanguage,
+  IoSchool, IoStar, IoBook, IoPerson, IoTime, IoLanguage,
   IoChevronDown, IoCall, IoMail, IoLocation, IoPaperPlane,
   IoVideocam, IoCreate, IoHelpCircle, IoDocumentText, IoRibbon,
   IoBarChart, IoPeople, IoInfinite, IoFlask,
@@ -63,6 +64,21 @@ const faqData = [
 export default function HomePage() {
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [openFaq, setOpenFaq] = useState<number>(0);
+  const [studentCount, setStudentCount] = useState<number>(0);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    setLang(html.lang === "ar" ? "ar" : "en");
+    const observer = new MutationObserver(() => {
+      setLang(document.documentElement.lang === "ar" ? "ar" : "en");
+    });
+    observer.observe(html, { attributes: true, attributeFilter: ["lang"] });
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    fetchActiveStudentsCount().then(setStudentCount).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -109,21 +125,14 @@ export default function HomePage() {
             <p className="text-base sm:text-lg text-text-light max-w-[540px] mb-2">{t("heroSub")}</p>
             <p className="text-sm text-text-lighter max-w-[540px] mb-8">{t("heroDesc")}</p>
             <div className="flex flex-wrap gap-4">
-              <Link
-                href="#stages"
-                className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full font-semibold text-sm bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-2px] hover:shadow-[0_8px_30px_rgba(0,191,166,0.4)] transition-all duration-300"
-              >
-                <FaBookOpen />
-                <span>{t("exploreCourses")}</span>
-              </Link>
-              <button
-                onClick={() => alert("Demo: Watch Demo Video")}
-                className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full font-semibold text-sm border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all duration-300 hover:translate-y-[-2px] bg-transparent cursor-pointer"
-              >
-                <IoPlay />
-                <span>{t("watchDemo")}</span>
-              </button>
-            </div>
+               <Link
+                 href="#stages"
+                 className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full font-semibold text-sm bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-2px] hover:shadow-[0_8px_30px_rgba(0,191,166,0.4)] transition-all duration-300"
+               >
+                 <FaBookOpen />
+                 <span>{t("exploreCourses")}</span>
+               </Link>
+             </div>
           </div>
 
           {/* Hero Visual */}
@@ -147,7 +156,7 @@ export default function HomePage() {
                 <FaUsers />
               </div>
               <div>
-                <strong className="text-sm block">2000+</strong>
+                 <strong className="text-sm block">{studentCount > 0 ? studentCount.toLocaleString() : "—"}</strong>
                 <span className="text-xs text-text-light">{t("overview")}</span>
               </div>
             </div>
@@ -330,7 +339,7 @@ export default function HomePage() {
             </div>
 
             <form
-              onSubmit={(e) => { e.preventDefault(); alert("Demo: Message sent successfully!"); }}
+              onSubmit={(e) => { e.preventDefault(); }}
               className="bg-white rounded-[28px] p-9 shadow-sm border border-border"
             >
               <h4 className="text-lg font-semibold mb-5">{t("sendMsg")}</h4>

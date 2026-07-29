@@ -25,7 +25,7 @@ interface AuthContextType {
   userRole: UserRole;
   userStatus: UserStatus;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, phone: string, role?: UserRole) => Promise<void>;
+  register: (email: string, password: string, name: string, phone: string, parentName: string, parentPhone: string, role?: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
-  const register = async (email: string, password: string, name: string, phone: string, role: UserRole = "student") => {
+  const register = async (email: string, password: string, name: string, phone: string, parentName: string, parentPhone: string, role: UserRole = "student") => {
     const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     const finalRole = isAdmin ? "admin" : role;
     const finalStatus = isAdmin ? "active" : "pending";
@@ -106,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name,
       email,
       phone,
+      parentName,
+      parentPhone,
       role: finalRole,
       status: finalStatus,
       createdAt: serverTimestamp(),
@@ -134,6 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: cred.user.displayName || "User",
         email,
         phone: cred.user.phoneNumber || "",
+        parentName: "",
+        parentPhone: "",
         role: isAdmin ? "admin" : "student",
         status: isAdmin ? "active" : "pending",
         createdAt: serverTimestamp(),
