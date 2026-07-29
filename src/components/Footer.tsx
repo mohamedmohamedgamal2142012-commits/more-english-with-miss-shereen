@@ -70,7 +70,7 @@ export default function Footer({ lang }: FooterProps) {
             <h4 className="text-white text-base font-semibold mb-5">{t("navContact")}</h4>
             <ul className="flex flex-col gap-2.5 list-none text-sm text-white/60">
               <li>+20 10 94589403</li>
-              <li>info@miss-shereen.com</li>
+              <li>shoshamairy@gmail.com</li>
             </ul>
           </div>
         </div>

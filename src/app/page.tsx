@@ -221,7 +221,7 @@ export default function HomePage() {
                 {[
                   { icon: FaPhone, label: "phone", value: "+20 10 94589403" },
                   { icon: FaWhatsapp, label: "WhatsApp", value: "+20 10 94589403" },
-                  { icon: FaEnvelope, label: "email", value: "info@miss-shereen.com" },
+                  { icon: FaEnvelope, label: "email", value: "shoshamairy@gmail.com" },
                   { icon: FaMapMarkerAlt, label: "address", value: "123 Education Street, Cairo, Egypt" },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-4">
