@@ -479,8 +479,8 @@ const AITabComp = memo(function AITabComp({ lang, aiChat, aiInput, setAiInput, s
     try {
       const reply = await sendGeminiMessage(aiInput, lang);
       setAiChat([...newChat, { role: "ai", text: reply }]);
-    } catch {
-      setAiChat([...newChat, { role: "ai", text: lang === "ar" ? "عذراً، حدث خطأ. حاول مرة أخرى." : "Sorry, something went wrong. Please try again." }]);
+    } catch (err) {
+      setAiChat([...newChat, { role: "ai", text: lang === "ar" ? "عذراً، حدث خطأ: " + (err as Error).message : "Something went wrong: " + (err as Error).message + ". Please try again." }]);
     }
   }, [aiInput, aiChat, setAiInput, setAiChat, lang]);
 
