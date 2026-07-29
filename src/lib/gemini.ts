@@ -1,4 +1,4 @@
-export async function sendGeminiMessage(text: string, lang: "en" | "ar"): Promise<string> {
+export async function sendGeminiMessage(text: string, lang: string): Promise<string> {
   const res = await fetch("/api/gemini", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
