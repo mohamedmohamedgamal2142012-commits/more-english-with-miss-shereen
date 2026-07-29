@@ -1,21 +1,10 @@
-const GEMINI_API_KEY = "AQ.Ab8RN6K6MTFDa1EYRdlBTUmkcawSGoeoJm1mx93SBd-mp8BcqA";
-const MODEL = "gemini-2.0-flash";
-
 export async function sendGeminiMessage(text: string, lang: "en" | "ar"): Promise<string> {
-  const systemPrompt = lang === "ar"
-    ? "أنت مساعد تعليمي ذكي لمادة اللغة الإنجليزية للمنهج المصري. أجب على أسئلة الطلاب باللغة العربية بشكل مفيد ومبسّط. إذا لم تتمكن من الإجابة، قل 'لا أستطيع الإجابة على هذا السؤال بعد. راجع الدروس أو اسأل معلّمك.'"
-    : "You are an intelligent English teaching assistant for the Egyptian curriculum. Answer student questions in English clearly and helpfully. If you cannot answer, say 'I am not able to answer that yet. Please check the lessons or ask your teacher.'";
-
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
+  const res = await fetch("/api/gemini", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: `${systemPrompt}\n\nQuestion: ${text}` }] }],
-      generationConfig: { temperature: 0.7, topP: 0.9, maxOutputTokens: 500 }
-    })
+    body: JSON.stringify({ text, lang }),
   });
-
   if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || (lang === "ar" ? "عذراً، لم أتمكن من الإجابة على هذا السؤال." : "Sorry, I couldn't answer that question.");
+  return data.reply || (lang === "ar" ? "عذراً، لم أتمكن من الإجابة على هذا السؤال." : "Sorry, I couldn't answer that question.");
 }
