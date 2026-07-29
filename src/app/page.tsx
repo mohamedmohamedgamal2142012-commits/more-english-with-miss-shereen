@@ -13,7 +13,7 @@ import {
 } from "react-icons/io5";
 import {
   FaChild, FaUserGraduate, FaSchool, FaUniversity, FaUsers,
-  FaStar, FaPhone, FaEnvelope, FaMapMarkerAlt, FaPaperPlane,
+  FaStar, FaPhone, FaEnvelope, FaMapMarkerAlt,
   FaWhatsapp, FaBookOpen
 } from "react-icons/fa";
 
@@ -214,8 +214,7 @@ export default function HomePage() {
             <h2 className="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t("contactTitle")}</h2>
             <p className="text-text-light max-w-[600px] mx-auto">{t("contactSub")}</p>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 fade-section" style={{ opacity: 0 }}>
-            <div>
+          <div className="max-w-[600px] mx-auto fade-section" style={{ opacity: 0 }}>
               <h3 className="text-xl font-bold mb-2">{t("contactInfo")}</h3>
               <p className="text-text-light mb-8">{t("contactInfoP")}</p>
               <div className="flex flex-col gap-5">
@@ -237,27 +236,6 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-
-            <form
-              onSubmit={(e) => { e.preventDefault(); }}
-              className="bg-white rounded-[28px] p-9 shadow-sm border border-border"
-            >
-              <h4 className="text-lg font-semibold mb-5">{t("sendMsg")}</h4>
-              <div className="space-y-4">
-                <input type="text" placeholder={t("overview")} disabled className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg transition-all duration-300 disabled:opacity-60" />
-                <input type="email" placeholder={t("email")} disabled className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg transition-all duration-300 disabled:opacity-60" />
-                <input type="text" placeholder="Subject" disabled className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg transition-all duration-300 disabled:opacity-60" />
-                <textarea placeholder="Your Message" disabled rows={4} className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg transition-all duration-300 disabled:opacity-60 resize-none" />
-                <button
-                  type="submit"
-                  disabled
-                  className="w-full inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-full font-semibold text-sm bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] opacity-60 cursor-not-allowed"
-                >
-                  <FaPaperPlane className="text-xs" />
-                  <span>{t("send")}</span>
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       </section>
