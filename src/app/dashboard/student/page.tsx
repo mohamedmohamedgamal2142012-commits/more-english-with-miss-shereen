@@ -21,8 +21,8 @@ import {
   fetchReports, fetchExamResults, submitExamResult, submitHomework,
   uploadFile, incrementLessonView, updateUserProfile,
   fetchMessages, sendMessage, fetchLeaderboard, fetchCourses,
-  fetchWalletPromos, validateWalletPromo,
-  activateLessonWithCode, fetchNotifications
+  fetchWalletPromos, validateWalletPromo, addTransaction, activateLessonWithCode, purchaseLesson,
+  fetchNotifications
 } from "@/lib/firestore-utils";
 import { BADGES, getYouTubeEmbedUrl } from "@/lib/types";
 import type { Lesson, Exam, ExamQuestion, Homework, AppFile, WalletTransaction, Report, ExamResult, ChatMessage, Notification } from "@/lib/types";
@@ -30,7 +30,7 @@ import type { Lesson, Exam, ExamQuestion, Homework, AppFile, WalletTransaction, 
 type STab = "home" | "lessons" | "wallet" | "exams" | "homework" | "files" | "reports" | "achievements" | "profile" | "parent" | "ai" | "notifications";
 
 interface HomeTabProps { lang: string; lessons: Lesson[]; examResults: ExamResult[]; exams: Exam[]; wallet: number; badges: string[]; userId?: string; points: number; completedExams: number; }
-interface LessonsTabProps { lang: string; lessons: Lesson[]; userId?: string; activatedLessons?: string[]; activateLessonWithCode: (lessonId: string, code: string, userId: string) => Promise<boolean>; }
+interface LessonsTabProps { lang: string; lessons: Lesson[]; userId?: string; wallet: number; activatedLessons?: string[]; activateLessonWithCode: (lessonId: string, code: string, userId: string) => Promise<boolean>; onPurchase: (lessonId: string, price: number) => Promise<void>; }
 interface WalletTabProps { lang: string; wallet: number; transactions: WalletTransaction[]; userId?: string; }
 interface ExamsTabProps { lang: string; exams: Exam[]; examResults: ExamResult[]; userId?: string; setActiveExam: (e: Exam | null) => void; examAnswers: Record<string, string>; setExamAnswers: (v: Record<string, string>) => void; examSubmitted: boolean; setExamSubmitted: (v: boolean) => void; examScore: number; setExamScore: (v: number) => void; examTimer: number; setExamTimer: (v: number) => void; }
 interface ExamPlayerProps { lang: string; activeExam: Exam; examAnswers: Record<string, string>; setExamAnswers: (v: Record<string, string>) => void; examSubmitted: boolean; setExamSubmitted: (v: boolean) => void; examScore: number; setExamScore: (v: number) => void; examTimer: number; setActiveExam: (v: Exam | null) => void; userId?: string; userName?: string; submitExamResult: (data: any) => Promise<void>; submitExamRef?: React.MutableRefObject<(() => void) | null>; }
@@ -91,11 +91,12 @@ const HomeTab = memo(function HomeTab({ lang, lessons, examResults, exams, walle
   );
 });
 
-const LessonsTab = memo(function LessonsTab({ lang, lessons, userId, activatedLessons = [], activateLessonWithCode }: LessonsTabProps) {
+const LessonsTab = memo(function LessonsTab({ lang, lessons, userId, wallet, activatedLessons = [], activateLessonWithCode, onPurchase }: LessonsTabProps) {
   const [playing, setPlaying] = useState<Lesson | null>(null);
   const [codeInputs, setCodeInputs] = useState<Record<string, string>>({});
   const [codeMsgs, setCodeMsgs] = useState<Record<string, string>>({});
   const [codeLoading, setCodeLoading] = useState<Record<string, boolean>>({});
+  const [purchasing, setPurchasing] = useState<string | null>(null);
   const handleActivate = useCallback(async (lessonId: string) => {
     const code = (codeInputs[lessonId] || "").trim();
     if (!code) return;
@@ -111,9 +112,28 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId, activatedLe
   }, [codeInputs, activateLessonWithCode, userId, lang]);
 
   const canPlay = useCallback((lesson: Lesson) => {
-    if (!lesson.codes || lesson.codes.length === 0) return true;
-    return activatedLessons.includes(lesson.id);
-  }, [activatedLessons]);
+    const hasCodes = lesson.codes && lesson.codes.length > 0;
+    if (hasCodes && !activatedLessons.includes(lesson.id)) return false;
+    if (lesson.price > 0 && wallet < lesson.price) return false;
+    return true;
+  }, [activatedLessons, wallet]);
+
+  const handleWatch = useCallback(async (lesson: Lesson) => {
+    if (!userId) return;
+    if (lesson.price > 0 && wallet >= lesson.price) {
+      setPurchasing(lesson.id);
+      try {
+        await onPurchase(lesson.id, lesson.price);
+      } catch (e: any) {
+        alert(e.message);
+        setPurchasing(null);
+        return;
+      }
+      setPurchasing(null);
+    }
+    await incrementLessonView(lesson.id, userId);
+    setPlaying(lesson);
+  }, [userId, wallet, onPurchase]);
 
   return (
     <div>
@@ -138,7 +158,9 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId, activatedLe
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {lessons.map(l => {
-            const locked = l.codes && l.codes.length > 0 && !canPlay(l);
+            const codeLocked = l.codes && l.codes.length > 0 && !activatedLessons.includes(l.id);
+            const priceLocked = l.price > 0 && wallet < l.price;
+            const locked = !canPlay(l);
             return (
             <div key={l.id} className="bg-white rounded-[20px] overflow-hidden shadow-sm border border-border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
               <div className={`h-[120px] flex items-center justify-center ${locked ? "bg-gray-100" : "bg-gradient-to-br from-[rgba(0,191,166,0.15)] to-[rgba(79,70,229,0.1)]"}`}>
@@ -151,7 +173,12 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId, activatedLe
                   {l.price > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">{l.price} {lang === "ar" ? "ج.م" : "EGP"}</span>}
                 </div>
                 <h4 className="font-semibold mt-2 text-sm">{l.title}</h4>
-                {locked ? (
+                {priceLocked && (
+                  <div className="mt-3">
+                    <p className="text-xs text-red-500 mb-1">{lang === "ar" ? `رصيدك ${wallet} ج.م غير كافٍ (السعر ${l.price} ج.م)` : `Your balance ${wallet} EGP is insufficient (price ${l.price} EGP)`}</p>
+                  </div>
+                )}
+                {codeLocked && (
                   <div className="mt-3">
                     {codeMsgs[l.id] && (
                       <p className={`text-xs mb-1 ${codeMsgs[l.id] === (lang === "ar" ? "تم التفعيل!" : "Activated!") ? "text-green-600" : "text-red-500"}`}>{codeMsgs[l.id]}</p>
@@ -161,10 +188,11 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId, activatedLe
                       <button onClick={() => handleActivate(l.id)} disabled={codeLoading[l.id]} className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs cursor-pointer border-none">{codeLoading[l.id] ? "..." : (lang === "ar" ? "تفعيل" : "Activate")}</button>
                     </div>
                   </div>
-                ) : (
+                )}
+                {!locked && (
                   <>
                 <p className="text-xs text-text-light mt-1">{lang === "ar" ? `المشاهدات: ${userId ? l.viewers?.[userId] || 0 : 0}` : `Views: ${userId ? l.viewers?.[userId] || 0 : 0}`}</p>
-                <button onClick={async () => { await incrementLessonView(l.id, userId!); setPlaying(l); }} className="mt-3 w-full px-3 py-2 rounded-full text-xs font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none">{lang === "ar" ? "مشاهدة" : "Watch"}</button>
+                <button onClick={() => handleWatch(l)} disabled={purchasing === l.id} className="mt-3 w-full px-3 py-2 rounded-full text-xs font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none disabled:opacity-50">{purchasing === l.id ? "..." : (lang === "ar" ? "مشاهدة" : "Watch")}</button>
                 </>
                 )}
               </div>
@@ -823,7 +851,7 @@ export default function StudentDashboard() {
   function renderTab() {
     switch (tab) {
       case "home": return <HomeTab lang={lang} lessons={lessons} examResults={examResults} exams={exams} wallet={wallet} badges={badges} userId={user?.uid} points={points} completedExams={completedExams} />;
-      case "lessons": return <LessonsTab lang={lang} lessons={lessons} userId={user?.uid} activatedLessons={activatedLessons} activateLessonWithCode={activateLessonWithCode} />;
+      case "lessons": return <LessonsTab lang={lang} lessons={lessons} userId={user?.uid} wallet={wallet} activatedLessons={activatedLessons} activateLessonWithCode={activateLessonWithCode} onPurchase={async (lessonId, price) => { await purchaseLesson(user?.uid || "", lessonId, price); setWallet(w => Math.max(0, w - price)); }} />;
       case "wallet": return <WalletTabComp lang={lang} wallet={wallet} transactions={transactions} userId={user?.uid} />;
       case "exams": return activeExam ? <ExamPlayerComp lang={lang} activeExam={activeExam} examAnswers={examAnswers} setExamAnswers={setExamAnswers} examSubmitted={examSubmitted} setExamSubmitted={setExamSubmitted} examScore={examScore} setExamScore={setExamScore} examTimer={examTimer} setActiveExam={setActiveExam} userId={user?.uid} userName={userName} submitExamResult={submitExamResult} submitExamRef={submitExamRef} /> : <ExamsTabComp lang={lang} exams={exams} examResults={examResults} userId={user?.uid} setActiveExam={setActiveExam} examAnswers={examAnswers} setExamAnswers={setExamAnswers} examSubmitted={examSubmitted} setExamSubmitted={setExamSubmitted} examScore={examScore} setExamScore={setExamScore} examTimer={examTimer} setExamTimer={setExamTimer} />;
       case "homework": return <HomeworkTabComp lang={lang} homework={homework} selectedHomework={selectedHomework} setSelectedHomework={setSelectedHomework} homeworkFiles={homeworkFiles} setHomeworkFiles={setHomeworkFiles} userId={user?.uid} uploadFile={uploadFile} submitHomeworkFn={submitHomework} />;

@@ -119,6 +119,22 @@ export async function activateLessonWithCode(lessonId: string, code: string, use
   return true;
 }
 
+export async function purchaseLesson(studentId: string, lessonId: string, price: number) {
+  const userRef = doc(db, "users", studentId);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) throw new Error("User not found");
+  const wallet = userSnap.data().wallet || 0;
+  if (wallet < price) throw new Error("Insufficient balance");
+  await addTransaction(studentId, "debit", price, `Lesson purchase: ${lessonId}`);
+  const lessonRef = doc(db, "lessons", lessonId);
+  const lessonSnap = await getDoc(lessonRef);
+  if (lessonSnap.exists()) {
+    const viewers = lessonSnap.data().viewers || {};
+    viewers[studentId] = (viewers[studentId] || 0) + 1;
+    await updateDoc(lessonRef, { viewers });
+  }
+}
+
 // === Exams ===
 export async function fetchExams() {
   const q = query(collection(db, "exams"), orderBy("createdAt", "desc"));
