@@ -6,7 +6,7 @@ import { getTranslation } from "@/lib/i18n";
 import { fetchActiveStudentsCount } from "@/lib/firestore-utils";
 import {
   IoSchool, IoStar, IoBook, IoPerson, IoTime, IoLanguage,
-  IoChevronDown, IoCall, IoMail, IoLocation, IoPaperPlane,
+  IoCall, IoMail, IoLocation, IoPaperPlane,
   IoVideocam, IoCreate, IoHelpCircle, IoDocumentText, IoRibbon,
   IoBarChart, IoPeople, IoInfinite, IoFlask,
   IoCheckmarkCircle, IoChatbubbles, IoNewspaper
@@ -51,19 +51,8 @@ const features = [
   { icon: FaUsers, title: "fParent", desc: "fParentP" },
 ];
 
-// ========= FAQ DATA =========
-const faqData = [
-  { q: "faq1q", a: "faq1a" },
-  { q: "faq2q", a: "faq2a" },
-  { q: "faq3q", a: "faq3a" },
-  { q: "faq4q", a: "faq4a" },
-  { q: "faq5q", a: "faq5a" },
-  { q: "faq6q", a: "faq6a" },
-];
-
 export default function HomePage() {
   const [lang, setLang] = useState<"en" | "ar">("en");
-  const [openFaq, setOpenFaq] = useState<number>(0);
   const [studentCount, setStudentCount] = useState<number>(0);
 
   useEffect(() => {
@@ -272,41 +261,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============ FAQ ============ */}
-      <section id="faq" className="py-24 bg-primary-bg">
-        <div className="max-w-[800px] mx-auto px-6">
-          <div className="text-center mb-14 fade-section" style={{ opacity: 0 }}>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t("faqTitle")}</h2>
-            <p className="text-text-light max-w-[600px] mx-auto">{t("faqSub")}</p>
-          </div>
-          <div className="space-y-3 fade-section" style={{ opacity: 0 }}>
-            {faqData.map((faq, i) => (
-              <div
-                key={i}
-                className={`border border-border rounded-xl overflow-hidden transition-all duration-300 ${openFaq === i ? "border-primary" : "hover:border-primary"}`}
-              >
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
-                  className="w-full px-6 py-5 bg-white border-none flex justify-between items-center text-base font-medium cursor-pointer transition-all duration-300 font-inherit text-left"
-                >
-                  <span>{t(faq.q)}</span>
-                  <IoChevronDown
-                    className={`text-primary text-sm transition-all duration-300 ${openFaq === i ? "rotate-180" : ""}`}
-                  />
-                </button>
-                <div
-                  className={`overflow-hidden transition-all duration-300 ${
-                    openFaq === i ? "max-h-[300px] px-6 pb-5" : "max-h-0 px-6"
-                  }`}
-                >
-                  <p className="text-sm text-text-light leading-relaxed">{t(faq.a)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ============ CONTACT ============ */}
       <section id="contact" className="py-24 bg-primary-bg">
         <div className="max-w-[1200px] mx-auto px-6">
@@ -321,7 +275,7 @@ export default function HomePage() {
               <div className="flex flex-col gap-5">
                 {[
                   { icon: FaPhone, label: "phone", value: "+20 100 123 4567" },
-                  { icon: FaWhatsapp, label: "WhatsApp", value: "+20 100 123 4567" },
+                  { icon: FaWhatsapp, label: "WhatsApp", value: "+20 10 94589403" },
                   { icon: FaEnvelope, label: "email", value: "info@miss-shereen.com" },
                   { icon: FaMapMarkerAlt, label: "address", value: "123 Education Street, Cairo, Egypt" },
                 ].map((item) => (

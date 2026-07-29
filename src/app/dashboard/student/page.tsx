@@ -170,7 +170,7 @@ const WalletTabComp = memo(function WalletTabComp({ lang, wallet, transactions, 
         </div>
         {promoMsg && <p className={`mt-2 text-sm ${promoMsg.includes("Credited") || promoMsg.includes("تم إضافة") ? "text-green-600" : "text-red-600"}`}>{promoMsg}</p>}
       </div>
-      <a href="https://wa.me/201001234567" target="_blank" className="flex items-center gap-2 px-5 py-3 rounded-xl bg-green-50 text-green-700 text-sm font-medium cursor-pointer mb-6">
+      <a href="https://wa.me/201094589403" target="_blank" className="flex items-center gap-2 px-5 py-3 rounded-xl bg-green-50 text-green-700 text-sm font-medium cursor-pointer mb-6">
         <FaWhatsapp className="text-lg" /> {lang === "ar" ? "شحن المحفظة عبر واتساب" : "Top Up Wallet via WhatsApp"}
       </a>
       <h4 className="text-base font-semibold mb-4">{lang === "ar" ? "سجل المعاملات" : "Transaction History"}</h4>
@@ -530,7 +530,7 @@ const AITabComp = memo(function AITabComp({ lang, aiChat, aiInput, setAiInput, s
            <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendAiMessage()} placeholder={lang === "ar" ? "اسأل سؤالاً..." : "Ask a question..."} className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm" />
            <button onClick={sendAiMessage} className="px-4 py-2.5 rounded-xl bg-primary text-white cursor-pointer border-none">{lang === "ar" ? "إرسال" : "Send"}</button>
          </div>
-         <a href="https://wa.me/201001234567" target="_blank" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 text-green-700 text-sm font-medium cursor-pointer border border-border"><FaWhatsapp /> {lang === "ar" ? "شحن المحفظة عبر واتساب" : "Top Up Wallet via WhatsApp"}</a>
+                   <a href="https://wa.me/201094589403" target="_blank" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 text-green-700 text-sm font-medium cursor-pointer border border-border"><FaWhatsapp /> {lang === "ar" ? "شحن المحفظة عبر واتساب" : "Top Up Wallet via WhatsApp"}</a>
        </div>
      </div>
    );

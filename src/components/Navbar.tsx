@@ -34,7 +34,6 @@ export default function Navbar({ lang, onLanguageChange }: NavbarProps) {
     { href: "/", label: t("navHome") },
     { href: "/#about", label: t("navAbout") },
     { href: "/#stages", label: t("navStages") },
-    { href: "/#faq", label: t("navFAQ") },
     { href: "/#contact", label: t("navContact") },
   ];
 

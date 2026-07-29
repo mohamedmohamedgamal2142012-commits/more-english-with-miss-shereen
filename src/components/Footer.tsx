@@ -45,7 +45,7 @@ export default function Footer({ lang }: FooterProps) {
           <div>
             <h4 className="text-white text-base font-semibold mb-5">{t("quickLinks")}</h4>
             <ul className="flex flex-col gap-2.5 list-none">
-              {["about", "stages", "faq", "contact"].map((key) => (
+              {["about", "stages", "contact"].map((key) => (
                 <li key={key}>
                   <Link
                     href={`/#${key}`}
