@@ -30,7 +30,7 @@ type STab = "home" | "lessons" | "wallet" | "exams" | "homework" | "files" | "re
 
 interface HomeTabProps { lang: string; lessons: Lesson[]; examResults: ExamResult[]; exams: Exam[]; wallet: number; badges: string[]; userId?: string; points: number; completedExams: number; }
 interface LessonsTabProps { lang: string; lessons: Lesson[]; userId?: string; }
-interface WalletTabProps { lang: string; wallet: number; transactions: WalletTransaction[]; }
+interface WalletTabProps { lang: string; wallet: number; transactions: WalletTransaction[]; userId?: string; }
 interface ExamsTabProps { lang: string; exams: Exam[]; examResults: ExamResult[]; userId?: string; setActiveExam: (e: Exam | null) => void; examAnswers: Record<string, string>; setExamAnswers: (v: Record<string, string>) => void; examSubmitted: boolean; setExamSubmitted: (v: boolean) => void; examScore: number; setExamScore: (v: number) => void; examTimer: number; setExamTimer: (v: number) => void; }
 interface ExamPlayerProps { lang: string; activeExam: Exam; examAnswers: Record<string, string>; setExamAnswers: (v: Record<string, string>) => void; examSubmitted: boolean; setExamSubmitted: (v: boolean) => void; examScore: number; setExamScore: (v: number) => void; examTimer: number; setActiveExam: (v: Exam | null) => void; userId?: string; userName?: string; submitExamResult: (data: any) => Promise<void>; }
 interface HomeworkTabProps { lang: string; homework: Homework[]; selectedHomework: string | null; setSelectedHomework: (v: string | null) => void; homeworkFiles: File[]; setHomeworkFiles: (v: File[]) => void; userId?: string; uploadFile: (file: File, path: string) => Promise<string>; submitHomeworkFn: (data: any) => Promise<void>; }
@@ -138,7 +138,7 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId }: LessonsTa
   );
 });
 
-const WalletTabComp = memo(function WalletTabComp({ lang, wallet, transactions }: WalletTabProps) {
+const WalletTabComp = memo(function WalletTabComp({ lang, wallet, transactions, userId }: WalletTabProps) {
   const [promoCode, setPromoCode] = useState("");
   const [promoMsg, setPromoMsg] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
@@ -147,7 +147,7 @@ const WalletTabComp = memo(function WalletTabComp({ lang, wallet, transactions }
     setPromoLoading(true);
     setPromoMsg("");
     try {
-      const result = await validateWalletPromo(promoCode.trim(), user?.uid || "");
+      const result = await validateWalletPromo(promoCode.trim(), userId || "");
       if (result.valid) {
         setPromoMsg(`${lang === "ar" ? "تم إضافة" : "Credited"} ${result.amount} EGP ${lang === "ar" ? "للمحفظة" : "to wallet"}`);
       } else {
@@ -746,7 +746,7 @@ export default function StudentDashboard() {
     switch (tab) {
       case "home": return <HomeTab lang={lang} lessons={lessons} examResults={examResults} exams={exams} wallet={wallet} badges={badges} userId={user?.uid} points={points} completedExams={completedExams} />;
       case "lessons": return <LessonsTab lang={lang} lessons={lessons} userId={user?.uid} />;
-      case "wallet": return <WalletTabComp lang={lang} wallet={wallet} transactions={transactions} />;
+      case "wallet": return <WalletTabComp lang={lang} wallet={wallet} transactions={transactions} userId={user?.uid} />;
       case "exams": return activeExam ? <ExamPlayerComp lang={lang} activeExam={activeExam} examAnswers={examAnswers} setExamAnswers={setExamAnswers} examSubmitted={examSubmitted} setExamSubmitted={setExamSubmitted} examScore={examScore} setExamScore={setExamScore} examTimer={examTimer} setActiveExam={setActiveExam} userId={user?.uid} userName={userName} submitExamResult={submitExamResult} /> : <ExamsTabComp lang={lang} exams={exams} examResults={examResults} userId={user?.uid} setActiveExam={setActiveExam} examAnswers={examAnswers} setExamAnswers={setExamAnswers} examSubmitted={examSubmitted} setExamSubmitted={setExamSubmitted} examScore={examScore} setExamScore={setExamScore} examTimer={examTimer} setExamTimer={setExamTimer} />;
       case "homework": return <HomeworkTabComp lang={lang} homework={homework} selectedHomework={selectedHomework} setSelectedHomework={setSelectedHomework} homeworkFiles={homeworkFiles} setHomeworkFiles={setHomeworkFiles} userId={user?.uid} uploadFile={uploadFile} submitHomeworkFn={submitHomework} />;
       case "files": return <FilesTabComp lang={lang} files={files} lessons={lessons} userId={user?.uid} />;
