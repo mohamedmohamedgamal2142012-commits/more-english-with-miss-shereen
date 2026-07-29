@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 * {
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='32' viewBox='0 0 24 32'%3E%3Crect x='8' y='4' width='8' height='17' rx='1' fill='%2300BFA6'/%3E%3Cpolygon points='6,21 18,21 12,30' fill='%23D4A373'/%3E%3Cpolygon points='9,21 15,21 12,30' fill='%23333'/%3E%3Crect x='8' y='4' width='8' height='3' rx='1' fill='%23B0B0B0'/%3E%3Crect x='8' y='1' width='8' height='4' rx='1' fill='%23FF8A80'/%3E%3C/svg%3E") 12 30, auto;
+  cursor: url("https://i.ibb.co/6RH0S7p9/LKad-2-link.png") 16 16, auto;
 }
 
 @theme {
