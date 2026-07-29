@@ -842,7 +842,13 @@ const Modal = memo(function Modal(p: AdminTabProps) {
             <><input placeholder={lang === "ar" ? "عنوان الدرس" : "Lesson Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
             <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="">{lang === "ar" ? "اختر الكورس (اختياري)" : "Select Course (optional)"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
               <select value={form.lessonType || "text"} onChange={e => setForm({ ...form, lessonType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="text">{lang === "ar" ? "درس نصي" : "Text Lesson"}</option><option value="video">{lang === "ar" ? "درس فيديو" : "Video Lesson"}</option></select>
-             <input type="file" accept="image/png,image/jpeg" onChange={e => { const f = e.target.files?.[0]; if (f) { if (!["image/png","image/jpeg"].includes(f.type)) { alert(lang === "ar" ? "الصيغة غير مدعومة (PNG/JPG فقط)" : "Unsupported format (PNG/JPG only)"); e.target.value = ""; return; } if (f.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); e.target.value = ""; return; } setForm({ ...form, thumbnail: f }); }}} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+             <div className="space-y-1">
+               <label className="text-xs font-medium text-text-light">{lang === "ar" ? "الصورة المصغرة (THUMBNAIL)" : "THUMBNAIL"}</label>
+               <label className="flex items-center gap-2 px-4 py-3 border border-border rounded-xl text-sm cursor-pointer bg-white">
+                 {form.thumbnail instanceof File ? form.thumbnail.name : (lang === "ar" ? "اختر صورة" : "Choose image")}
+                 <input type="file" accept="image/png,image/jpeg" onChange={e => { const f = e.target.files?.[0]; if (f) { if (!["image/png","image/jpeg"].includes(f.type)) { alert(lang === "ar" ? "الصيغة غير مدعومة (PNG/JPG فقط)" : "Unsupported format (PNG/JPG only)"); e.target.value = ""; return; } if (f.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); e.target.value = ""; return; } setForm({ ...form, thumbnail: f }); }}} className="hidden" />
+               </label>
+             </div>
              {form.thumbnail && typeof form.thumbnail === "string" && <img src={form.thumbnail} className="w-full h-32 object-cover rounded-xl" alt="thumbnail" />}
              <div className="space-y-1">
                <label className="text-xs font-medium text-text-light">{lang === "ar" ? "رابط الفيديو (يوتيوب)" : "Video URL (YouTube)"}</label>
