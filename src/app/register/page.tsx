@@ -43,7 +43,7 @@ export default function RegisterPage() {
     setError("");
 
     if (step === 1) {
-      if (!name || !email || !phone || !parentName || !parentPhone || !password || !confirm) {
+      if (!name || !email || !phone || !password || !confirm) {
         setError("Please fill in all fields");
         return;
       }
@@ -55,7 +55,22 @@ export default function RegisterPage() {
         setError("Password must be at least 6 characters");
         return;
       }
-      setStep(2);
+      if (parentName && parentPhone) {
+        setStep(2);
+      } else {
+        setLoading(true);
+        try {
+          await register(email, password, name, phone, parentName, parentPhone);
+          const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+          if (!isAdmin) {
+            setRegistered(true);
+          }
+        } catch (err: any) {
+          setError(err.message || "Failed to create account");
+        } finally {
+          setLoading(false);
+        }
+      }
       return;
     }
 
