@@ -171,4 +171,12 @@ export const BADGES = [
   { id: "fire", icon: "🔥", nameEn: "On Fire", nameAr: "مشتعل", descEn: "7-day streak", descAr: "7 أيام متتالية" },
 ];
 
-export const GAMES = ["quiz", "memory", "word", "math", "typing"];
+export function getYouTubeEmbedUrl(url: string): string {
+  if (!url) return "";
+  const m = url.match(/[?&]v=([^&]+)/);
+  if (m) return `https://www.youtube.com/embed/${m[1]}`;
+  const short = url.match(/youtu\.be\/([^?]+)/);
+  if (short) return `https://www.youtube.com/embed/${short[1]}`;
+  if (url.includes("youtube.com/embed/")) return url;
+  return url;
+}

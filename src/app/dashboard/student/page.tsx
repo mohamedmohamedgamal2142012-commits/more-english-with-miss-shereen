@@ -20,7 +20,7 @@ import {
   uploadFile, incrementLessonView, updateUserProfile, saveGameScore,
   fetchMessages, sendMessage, fetchLeaderboard, fetchCourses
 } from "@/lib/firestore-utils";
-import { BADGES } from "@/lib/types";
+import { BADGES, getYouTubeEmbedUrl } from "@/lib/types";
 import type { Lesson, Exam, ExamQuestion, Homework, AppFile, WalletTransaction, Report, ExamResult, ChatMessage } from "@/lib/types";
 
 type STab = "home" | "lessons" | "wallet" | "exams" | "homework" | "files" | "reports" | "achievements" | "profile" | "parent" | "ai" | "game";
@@ -103,7 +103,7 @@ const LessonsTab = memo(function LessonsTab({ lang, lessons, userId }: LessonsTa
           </div>
           {playing.videoUrl && (
             <div className="aspect-video bg-black rounded-xl overflow-hidden mb-4">
-              <iframe src={playing.videoUrl.replace("watch?v=", "embed/")} className="w-full h-full" allowFullScreen />
+              <iframe src={getYouTubeEmbedUrl(playing.videoUrl)} className="w-full h-full" allowFullScreen />
             </div>
           )}
           {playing.embedCode && <div className="mb-4" dangerouslySetInnerHTML={{ __html: playing.embedCode }} />}

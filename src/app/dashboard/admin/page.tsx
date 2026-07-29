@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTranslation } from "@/lib/i18n";
+import { getYouTubeEmbedUrl } from "@/lib/types";
 import {
   fetchStudents, fetchPendingStudents, updateUserStatus, deleteUser,
   fetchCourses, saveCourse, deleteCourse,
@@ -241,7 +242,7 @@ const LessonsTab = memo(function LessonsTab(p: AdminTabProps) {
         <div>
           <button onClick={() => setPlaying(null)} className="flex items-center gap-2 text-sm text-primary mb-4 cursor-pointer bg-transparent border-none"><IoArrowBack /> {lang === "ar" ? "عودة" : "Back"}</button>
           <h4 className="text-xl font-bold mb-3">{playing.title}</h4>
-          {playing.videoUrl && <div className="aspect-video bg-black rounded-xl overflow-hidden mb-4"><iframe src={playing.videoUrl.replace("watch?v=", "embed/")} className="w-full h-full" allowFullScreen /></div>}
+          {playing.videoUrl && <div className="aspect-video bg-black rounded-xl overflow-hidden mb-4"><iframe src={getYouTubeEmbedUrl(playing.videoUrl)} className="w-full h-full" allowFullScreen /></div>}
           {playing.embedCode && <div className="mb-4" dangerouslySetInnerHTML={{ __html: playing.embedCode }} />}
           <div className="text-sm mb-2">{lang === "ar" ? "الكودات:" : "Codes:"} {playing.codes?.join(", ") || "—"}</div>
           <div className="text-sm mb-2">{lang === "ar" ? "حد المشاهدات:" : "View limit:"} {playing.viewLimit || 0}</div>
@@ -651,7 +652,7 @@ const Modal = memo(function Modal(p: AdminTabProps) {
             <select value={form.courseType || "lessons"} onChange={e => setForm({ ...form, courseType: e.target.value, videoUrl: "", embedCode: "" })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="lessons">{lang === "ar" ? "دروس نصية" : "Text Lessons"}</option><option value="video">{lang === "ar" ? "فيديو" : "Video Course"}</option></select>
             {form.courseType === "video" && (
               <div className="space-y-3">
-                <input placeholder={lang === "ar" ? "رابط اليوتيوب" : "YouTube URL"} value={form.videoUrl || ""} onChange={e => setForm({ ...form, videoUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+                <input placeholder={lang === "ar" ? "رابط اليوتيوب" : "YouTube URL"} value={form.videoUrl || ""} onChange={e => { const v = e.target.value; let embed = form.embedCode; if (v.includes("youtube.com/watch")) { const id = v.split("v=")[1]?.split("&")[0]; if (id) embed = `https://www.youtube.com/embed/${id}`; } setForm({ ...form, videoUrl: v, embedCode: embed }); })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
                 <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value, videoUrl: "" })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
               </div>
             )}
@@ -661,7 +662,7 @@ const Modal = memo(function Modal(p: AdminTabProps) {
             <><input placeholder={lang === "ar" ? "عنوان الدرس" : "Lesson Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
             <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
             <select value={form.lessonType || "text"} onChange={e => setForm({ ...form, lessonType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="text">{lang === "ar" ? "درس نصي" : "Text Lesson"}</option><option value="video">{lang === "ar" ? "درس فيديو" : "Video Lesson"}</option></select>
-            <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => setForm({ ...form, videoUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+            <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => { const v = e.target.value; let embed = form.embedCode; if (v.includes("youtube.com/watch")) { const id = v.split("v=")[1]?.split("&")[0]; if (id) embed = `https://www.youtube.com/embed/${id}`; } setForm({ ...form, videoUrl: v, embedCode: embed }); })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
             <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
             <input placeholder={lang === "ar" ? "رابط PDF" : "PDF URL"} value={form.pdfUrl || ""} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
             <textarea placeholder={lang === "ar" ? "المحتوى" : "Content"} value={form.content || ""} onChange={e => setForm({ ...form, content: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={4} />
