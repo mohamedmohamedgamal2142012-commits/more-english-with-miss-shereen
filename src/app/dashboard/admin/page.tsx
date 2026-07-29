@@ -553,8 +553,8 @@ const ExamsTab = memo(function ExamsTab(p: AdminTabProps) {
             <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">{lang === "ar" ? "إضافة/تعديل امتحان" : "Add/Edit Exam"}</h3><button onClick={() => setShowModal(false)} className="text-xl cursor-pointer bg-transparent border-none"><IoClose /></button></div>
             <div className="space-y-4">
               <input placeholder={lang === "ar" ? "عنوان الامتحان" : "Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-              <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required>
-                <option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>
+              <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm">
+                <option value="">{lang === "ar" ? "اختر الكورس (اختياري)" : "Select Course (optional)"}</option>
                 {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <div className="flex gap-4">
@@ -837,8 +837,8 @@ const Modal = memo(function Modal(p: AdminTabProps) {
           )}
           {modalType === "lesson" && (
             <><input placeholder={lang === "ar" ? "عنوان الدرس" : "Lesson Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-            <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-             <select value={form.lessonType || "text"} onChange={e => setForm({ ...form, lessonType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="text">{lang === "ar" ? "درس نصي" : "Text Lesson"}</option><option value="video">{lang === "ar" ? "درس فيديو" : "Video Lesson"}</option></select>
+            <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="">{lang === "ar" ? "اختر الكورس (اختياري)" : "Select Course (optional)"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <select value={form.lessonType || "text"} onChange={e => setForm({ ...form, lessonType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="text">{lang === "ar" ? "درس نصي" : "Text Lesson"}</option><option value="video">{lang === "ar" ? "درس فيديو" : "Video Lesson"}</option></select>
              <input type="file" accept="image/png,image/jpeg" onChange={e => { const f = e.target.files?.[0]; if (f) { if (!["image/png","image/jpeg"].includes(f.type)) { alert(lang === "ar" ? "الصيغة غير مدعومة (PNG/JPG فقط)" : "Unsupported format (PNG/JPG only)"); e.target.value = ""; return; } if (f.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); e.target.value = ""; return; } setForm({ ...form, thumbnail: f }); }}} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
              {form.thumbnail && typeof form.thumbnail === "string" && <img src={form.thumbnail} className="w-full h-32 object-cover rounded-xl" alt="thumbnail" />}
              <div className="space-y-1">
@@ -872,7 +872,7 @@ const Modal = memo(function Modal(p: AdminTabProps) {
            )}
           {modalType === "homework" && (
             <><input placeholder={lang === "ar" ? "عنوان الواجب" : "Homework Title"} value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
-            <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required><option value="">{lang === "ar" ? "اختر الكورس" : "Select Course"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            <select value={form.courseId || ""} onChange={e => setForm({ ...form, courseId: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="">{lang === "ar" ? "اختر الكورس (اختياري)" : "Select Course (optional)"}</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
             <input type="date" value={form.dueDate || ""} onChange={e => setForm({ ...form, dueDate: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" required />
             <textarea placeholder={lang === "ar" ? "الأسئلة (سؤال لكل سطر)" : "Questions (one per line)"} value={form.questions || ""} onChange={e => setForm({ ...form, questions: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={6} required /></>
           )}
