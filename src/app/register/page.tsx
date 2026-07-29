@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [parentPhone, setParentPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [step, setStep] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
@@ -40,18 +41,24 @@ export default function RegisterPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!name || !email || !phone || !parentName || !parentPhone || !password || !confirm) {
-      setError("Please fill in all fields");
+
+    if (step === 1) {
+      if (!name || !email || !phone || !parentName || !parentPhone || !password || !confirm) {
+        setError("Please fill in all fields");
+        return;
+      }
+      if (password !== confirm) {
+        setError("Passwords do not match");
+        return;
+      }
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters");
+        return;
+      }
+      setStep(2);
       return;
     }
-    if (password !== confirm) {
-      setError("Passwords do not match");
-      return;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
+
     setLoading(true);
     try {
       await register(email, password, name, phone, parentName, parentPhone);
@@ -123,37 +130,72 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-text">{t("fullName")}</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={lang === "ar" ? "الاسم الكامل" : "Your Name"} className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-text">{t("email")}</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-text">{t("phone")}</label>
-            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+20 100 123 4567" className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-text">{t("parentName")}</label>
-            <input type="text" value={parentName} onChange={(e) => setParentName(e.target.value)} placeholder={lang === "ar" ? "اسم ولي الأمر" : "Parent Name"} className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-text">{t("parentPhone")}</label>
-            <input type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder={lang === "ar" ? "رقم ولي الأمر" : "Parent Phone"} className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-text">{t("password")}</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-text">{t("confirmPass")}</label>
-            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
-          </div>
-          <button type="submit" disabled={loading} className="w-full inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-full font-semibold text-sm bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-2px] hover:shadow-[0_8px_30px_rgba(0,191,166,0.4)] transition-all duration-300 disabled:opacity-60">
-            {loading ? "Loading..." : t("createAccount")}
-          </button>
+          {step === 1 ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-text">{t("fullName")}</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={lang === "ar" ? "الاسم الكامل" : "Your Name"} className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-text">{t("email")}</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-text">{t("phone")}</label>
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+20 100 123 4567" className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-text">{t("parentName")}</label>
+                <input type="text" value={parentName} onChange={(e) => setParentName(e.target.value)} placeholder={lang === "ar" ? "اسم ولي الأمر" : "Parent Name"} className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-text">{t("parentPhone")}</label>
+                <input type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder={lang === "ar" ? "رقم ولي الأمر" : "Parent Phone"} className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-text">{t("password")}</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-text">{t("confirmPass")}</label>
+                <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,191,166,0.1)]" />
+              </div>
+              <button type="submit" className="w-full inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-full font-semibold text-sm bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-2px] hover:shadow-[0_8px_30px_rgba(0,191,166,0.4)] transition-all duration-300">
+                {lang === "ar" ? "التالي" : "Next"}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="bg-primary-bg rounded-2xl p-6 border border-primary/20">
+                <h3 className="text-lg font-bold mb-4 text-center">
+                  {lang === "ar" ? "تأكيد بيانات ولي الأمر" : "Confirm Parent Information"}
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-border">
+                    <span className="text-text-light text-sm">{t("parentName")}</span>
+                    <span className="font-semibold">{parentName}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-border">
+                    <span className="text-text-light text-sm">{t("parentPhone")}</span>
+                    <span className="font-semibold" dir="ltr">{parentPhone}</span>
+                  </div>
+                </div>
+                <p className="text-sm text-text-light text-center mt-4">
+                  {lang === "ar"
+                    ? "يرجى التأكد من صحة بيانات ولي الأمر"
+                    : "Please verify the parent information is correct"}
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setStep(1)} className="flex-1 inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-full font-semibold text-sm border-2 border-border bg-white text-text hover:bg-bg transition-all duration-300">
+                  {lang === "ar" ? "تعديل" : "Edit"}
+                </button>
+                <button type="submit" disabled={loading} className="flex-1 inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-full font-semibold text-sm bg-gradient-to-r from-primary to-accent text-white shadow-[0_4px_15px_rgba(0,191,166,0.3)] hover:translate-y-[-2px] hover:shadow-[0_8px_30px_rgba(0,191,166,0.4)] transition-all duration-300 disabled:opacity-60">
+                  {loading ? "Loading..." : lang === "ar" ? "تأكيد" : "Confirm"}
+                </button>
+              </div>
+            </>
+          )}
         </form>
 
         <div className="flex items-center gap-4 my-5">
