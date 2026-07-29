@@ -342,6 +342,10 @@ export async function saveReport(data: Partial<Report>) {
   await setDoc(ref, data);
 }
 
+export async function deleteReport(id: string) {
+  await deleteDoc(doc(db, "reports", id));
+}
+
 // === Notifications ===
 export async function fetchNotifications() {
   const q = query(collection(db, "notifications"), orderBy("createdAt", "desc"));

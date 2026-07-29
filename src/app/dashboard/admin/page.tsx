@@ -14,7 +14,7 @@ import {
   fetchHomework, saveHomework, deleteHomework, fetchSubmissions, gradeSubmission,
   fetchFiles, saveFile, deleteFile, uploadFile,
   fetchTransactions, addTransaction,
-  fetchReports, saveReport,
+  fetchReports, saveReport, deleteReport,
   fetchNotifications, sendNotification, deleteNotification,
   updateUserProfile,
   fetchWalletPromos, createWalletPromo, validateWalletPromo,
@@ -68,7 +68,7 @@ interface AdminTabProps {
   setShowPromoModal: (v: boolean) => void;
   loadAll: () => Promise<void>;
   handleSubmit: (e: FormEvent) => Promise<void>;
-  handleDelete: (type: "course" | "lesson" | "exam" | "homework", id: string) => Promise<void>;
+  handleDelete: (type: "course" | "lesson" | "exam" | "homework" | "report", id: string) => Promise<void>;
   handleGrade: (subId: string, grade: number, annotation: string, reward: number) => Promise<void>;
   handleFileUpload: () => Promise<void>;
   openAdd: (type: ModalType) => void;
@@ -80,9 +80,19 @@ const OverviewTab = memo(function OverviewTab(p: AdminTabProps) {
   const { lang, students, lessons, pendingStudents, transactions } = p;
   const activeStudents = students.filter(s => s.status === "active").length;
   const pendingCount = pendingStudents.length;
-  const totalCredits = transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0);
-  const totalDebits = transactions.reduce((a, t) => t.type === "debit" ? a + t.amount : a, 0);
-  const netProfit = totalCredits - totalDebits;
+  const [revenue, setRevenue] = useState(transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0));
+  const [debits, setDebits] = useState(transactions.reduce((a, t) => t.type === "debit" ? a + t.amount : a, 0));
+  const [editingFinance, setEditingFinance] = useState<string | null>(null);
+  useEffect(() => {
+    setRevenue(transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0));
+    setDebits(transactions.reduce((a, t) => t.type === "debit" ? a + t.amount : a, 0));
+  }, [transactions]);
+  const netProfit = revenue - debits;
+  const financeCards = [
+    { key: "revenue", icon: IoWallet, bg: "bg-[rgba(59,130,246,0.1)]", color: "text-blue-600", value: revenue, label: lang === "ar" ? "إجمالي الإيرادات" : "Total Revenue" },
+    { key: "profit", icon: IoStatsChart, bg: "bg-[rgba(16,185,129,0.1)]", color: "text-green-600", value: netProfit, label: lang === "ar" ? "صافي الربح" : "Net Profit" },
+    { key: "debits", icon: IoCash, bg: "bg-[rgba(245,158,11,0.1)]", color: "text-yellow-600", value: debits, label: lang === "ar" ? "المصروفات" : "Debits" },
+  ];
   return (
     <div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -90,13 +100,30 @@ const OverviewTab = memo(function OverviewTab(p: AdminTabProps) {
           { icon: FaUserGraduate, bg: "bg-primary-light", color: "text-primary", value: activeStudents.toString(), label: lang === "ar" ? "طلاب معتمدين" : "Active Students" },
           { icon: IoPeople, bg: "bg-[rgba(245,158,11,0.1)]", color: "text-yellow-600", value: pendingCount.toString(), label: lang === "ar" ? "معلقين" : "Pending" },
           { icon: IoBook, bg: "bg-[rgba(79,70,229,0.1)]", color: "text-accent", value: lessons.length.toString(), label: lang === "ar" ? "دروس" : "Lessons" },
-          { icon: IoWallet, bg: "bg-[rgba(59,130,246,0.1)]", color: "text-blue-600", value: `${totalCredits}`, label: lang === "ar" ? "إجمالي الإيرادات" : "Total Revenue" },
-          { icon: IoStatsChart, bg: "bg-[rgba(16,185,129,0.1)]", color: "text-green-600", value: `${netProfit}`, label: lang === "ar" ? "صافي الربح" : "Net Profit" },
-          { icon: IoCash, bg: "bg-[rgba(245,158,11,0.1)]", color: "text-yellow-600", value: `${totalDebits}`, label: lang === "ar" ? "المصروفات" : "Debits" },
+          ...financeCards.map(c => ({
+            icon: c.icon, bg: c.bg, color: c.color, value: c.value.toString(), label: c.label, key: c.key
+          })),
         ].map(s => (
           <div key={s.label} className="bg-white rounded-[20px] p-6 shadow-sm border border-border flex items-center gap-4">
             <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center ${s.color}`}><s.icon className="text-xl" /></div>
-            <div><strong className="text-2xl font-bold block">{s.value}</strong><span className="text-sm text-text-light">{s.label}</span></div>
+            <div className="flex-1">
+              {s.key && editingFinance === s.key ? (
+                <div className="flex items-center gap-2">
+                  <input type="number" value={s.key === "revenue" ? revenue : s.key === "profit" ? netProfit : debits} onChange={e => {
+                    const v = Number(e.target.value);
+                    if (s.key === "revenue") setRevenue(v);
+                    else if (s.key === "debits") setDebits(v);
+                  }} className="w-24 px-2 py-1 border border-border rounded-lg text-sm" autoFocus />
+                  <button onClick={() => setEditingFinance(null)} className="text-xs text-primary cursor-pointer bg-transparent border-none">{lang === "ar" ? "حفظ" : "Save"}</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <strong className="text-2xl font-bold block">{s.value}</strong>
+                  {s.key && <button onClick={() => setEditingFinance(s.key)} className="text-xs text-text-light cursor-pointer bg-transparent border-none hover:text-primary"><IoCreate /></button>}
+                </div>
+              )}
+              <span className="text-sm text-text-light">{s.label}</span>
+            </div>
           </div>
         ))}
       </div>
@@ -674,7 +701,10 @@ const ReportsTab = memo(function ReportsTab(p: AdminTabProps) {
           const student = students.find(s => s.id === r.studentId);
           return (
             <div key={r.id} className="bg-white rounded-[20px] p-5 shadow-sm border border-border">
-              <h4 className="font-semibold">{r.studentName || student?.name || r.studentId} - {r.month}</h4>
+              <div className="flex justify-between items-start">
+                <h4 className="font-semibold">{r.studentName || student?.name || r.studentId} - {r.month}</h4>
+                <button onClick={() => handleDelete("report", r.id)} className="cursor-pointer bg-transparent border-none text-red-500"><IoTrash /></button>
+              </div>
               <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
                 <div><span className="text-text-light">{lang === "ar" ? "الحضور:" : "Attendance:"}</span> {r.attendance}%</div>
                 <div><span className="text-text-light">{lang === "ar" ? "الدرجات:" : "Grades:"}</span> {r.grades}</div>
@@ -958,10 +988,12 @@ export default function AdminDashboard() {
     loadAll();
   };
 
-  const handleDelete = async (type: "course" | "lesson" | "exam" | "homework", id: string) => {
+  const handleDelete = async (type: "course" | "lesson" | "exam" | "homework" | "report", id: string) => {
     if (type === "course") await deleteCourse(id);
     else if (type === "lesson") await deleteLesson(id);
     else if (type === "exam") await deleteExam(id);
+    else if (type === "homework") await deleteHomework(id);
+    else if (type === "report") await deleteReport(id);
     else await deleteHomework(id);
     loadAll();
   };
