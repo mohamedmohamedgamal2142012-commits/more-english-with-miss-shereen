@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getTranslation, Lang } from "@/lib/i18n";
 import { FaWhatsapp } from "react-icons/fa";
-import { IoSchool } from "react-icons/io5";
 
 interface FooterProps {
   lang: Lang;
@@ -78,6 +77,7 @@ export default function Footer({ lang }: FooterProps) {
 
         <div className="border-t border-white/10 mt-10 py-6 text-center text-sm text-white/50">
           <p>{t("copyright")}</p>
+          <p className="mt-2">Developed by <a href="http://mohamed-gamal-blog.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Mohamed Gamal Dev</a></p>
         </div>
       </div>
     </footer>
