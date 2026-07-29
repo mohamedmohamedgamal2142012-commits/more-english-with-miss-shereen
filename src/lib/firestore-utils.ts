@@ -273,6 +273,13 @@ export async function deleteWalletPromo(id: string) {
   await deleteDoc(doc(db, "wallet-promos", id));
 }
 
+// === Leaderboard ===
+export async function fetchLeaderboard() {
+  const snap = await getDocs(collection(db, "users"));
+  const list = snap.docs.map(d => ({ id: d.id, name: d.data().name, wallet: d.data().wallet || 0 } as any));
+  return list.filter((u: any) => u.name).sort((a: any, b: any) => b.wallet - a.wallet).slice(0, 50);
+}
+
 // === Reports ===
 export async function fetchReports(studentId?: string) {
   let q: any;
