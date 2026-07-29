@@ -808,10 +808,6 @@ export default function StudentDashboard() {
   if (loading || !user) return <div className="min-h-screen flex items-center justify-center bg-bg"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   if (userStatus === "pending" || userStatus === "banned") {
-    if (userStatus === "pending" && (!parentName || !parentPhone)) {
-      router.push("/parent-setup");
-      return <div className="min-h-screen flex items-center justify-center bg-bg"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
-    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg px-6">
         <div className="text-center max-w-md">
