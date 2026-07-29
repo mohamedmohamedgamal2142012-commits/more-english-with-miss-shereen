@@ -14,6 +14,8 @@ export async function POST(req: Request) {
       ? "أنت مساعد تعليمي ذكي لمادة اللغة الإنجليزية للمنهج المصري. أجب على أسئلة الطلاب باللغة العربية بشكل مفيد ومبسّط. إذا لم تتمكن من الإجابة، قل لا أستطيع الإجابة على هذا السؤال بعد."
       : "You are an intelligent English teaching assistant for the Egyptian curriculum. Answer student questions in English clearly and helpfully. If you cannot answer, say I am not able to answer that yet.";
 
+    console.log("OpenRouter request:", { model: MODEL, text: text.substring(0, 50), hasKey: !!OPENROUTER_API_KEY });
+
     const openrouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -33,11 +35,15 @@ export async function POST(req: Request) {
       }),
     });
 
-    if (!openrouterRes.ok) throw new Error(`OpenRouter API error: ${openrouterRes.status}`);
-    const data = await openrouterRes.json();
+    const rawBody = await openrouterRes.text();
+    console.log("OpenRouter response:", openrouterRes.status, rawBody.substring(0, 200));
+
+    if (!openrouterRes.ok) throw new Error(`OpenRouter HTTP ${openrouterRes.status}: ${rawBody.substring(0, 200)}`);
+    const data = JSON.parse(rawBody);
     const reply = data.choices?.[0]?.message?.content || (lang === "ar" ? "عذراً، لم أتمكن من الإجابة على هذا السؤال." : "Sorry, I could not answer that.");
     return NextResponse.json({ reply });
   } catch (err) {
+    console.error("OpenRouter error:", err);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
