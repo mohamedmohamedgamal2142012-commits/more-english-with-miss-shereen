@@ -274,7 +274,7 @@ export default function HomePage() {
               <p className="text-text-light mb-8">{t("contactInfoP")}</p>
               <div className="flex flex-col gap-5">
                 {[
-                  { icon: FaPhone, label: "phone", value: "+20 100 123 4567" },
+                  { icon: FaPhone, label: "phone", value: "+20 10 94589403" },
                   { icon: FaWhatsapp, label: "WhatsApp", value: "+20 10 94589403" },
                   { icon: FaEnvelope, label: "email", value: "info@miss-shereen.com" },
                   { icon: FaMapMarkerAlt, label: "address", value: "123 Education Street, Cairo, Egypt" },
