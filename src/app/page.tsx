@@ -115,11 +115,6 @@ export default function HomePage() {
             <div className="absolute w-[300px] h-[300px] rounded-full bg-primary opacity-[0.08] top-[30%] right-[10%] -translate-y-1/2" />
             <div className="absolute w-[200px] h-[200px] rounded-full bg-accent opacity-[0.08] bottom-[10%] left-[10%]" />
 
-            {/* Illustration placeholder */}
-            <div className="relative z-10 w-full max-w-[450px] h-[400px] rounded-[28px] overflow-hidden border border-primary/10">
-              <img src="/images/about-shereen.png" alt="Miss Shereen" className="w-full h-full object-cover" />
-            </div>
-
             {/* Floating Cards */}
             <div className="floating-card absolute top-[8%] right-[5%] z-20 bg-white rounded-xl px-4 py-3 shadow-lg flex items-center gap-3 animate-float border border-primary/10 pointer-events-none" style={{ animationDelay: "0s" }}>
               <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-primary to-accent flex items-center justify-center text-white text-sm flex-shrink-0">
