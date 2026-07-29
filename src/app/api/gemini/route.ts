@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const MODEL = "gemini-2.5-flash";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
 export async function POST(req: Request) {
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
+  if (!OPENROUTER_API_KEY) {
+    return NextResponse.json({ error: "OpenRouter API key not configured" }, { status: 500 });
   }
 
   try {
@@ -14,18 +14,28 @@ export async function POST(req: Request) {
       ? "أنت مساعد تعليمي ذكي لمادة اللغة الإنجليزية للمنهج المصري. أجب على أسئلة الطلاب باللغة العربية بشكل مفيد ومبسّط. إذا لم تتمكن من الإجابة، قل لا أستطيع الإجابة على هذا السؤال بعد."
       : "You are an intelligent English teaching assistant for the Egyptian curriculum. Answer student questions in English clearly and helpfully. If you cannot answer, say I am not able to answer that yet.";
 
-    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
+    const openrouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://more-english-with-miss-shereen.vercel.app",
+        "X-Title": "More English AI",
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `${systemPrompt}\n\nQuestion: ${text}` }] }],
-        generationConfig: { temperature: 0.7, topP: 0.9, maxOutputTokens: 500 }
+        model: MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: text },
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
       }),
     });
 
-    if (!geminiRes.ok) throw new Error(`Gemini API error: ${geminiRes.status}`);
-    const data = await geminiRes.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || (lang === "ar" ? "عذراً، لم أتمكن من الإجابة على هذا السؤال." : "Sorry, I could not answer that.");
+    if (!openrouterRes.ok) throw new Error(`OpenRouter API error: ${openrouterRes.status}`);
+    const data = await openrouterRes.json();
+    const reply = data.choices?.[0]?.message?.content || (lang === "ar" ? "عذراً، لم أتمكن من الإجابة على هذا السؤال." : "Sorry, I could not answer that.");
     return NextResponse.json({ reply });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
