@@ -163,24 +163,18 @@ export default function HomePage() {
 
       {/* ============ ABOUT ============ */}
       <section id="about" className="py-24 bg-white">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center fade-section" style={{ opacity: 0 }}>
-            <div className="relative w-full max-w-[400px] h-[400px] mx-auto rounded-[28px] overflow-hidden">
-              <img src="/images/about-shereen.png" alt="Miss Shereen" className="w-full h-full object-cover" />
-            </div>
-
-            <div>
-              <p className="text-primary font-semibold text-sm mb-2">{t("aboutSub")}</p>
-              <h2 className="text-3xl sm:text-4xl font-bold mb-2">{t("aboutTitle")}</h2>
-              <p className="text-accent font-medium mb-4">{t("aboutRole")}</p>
-              <p className="text-text-light leading-relaxed mb-4">{t("aboutP1")}</p>
-              <p className="text-text-light leading-relaxed mb-4">{t("aboutP2")}</p>
-              <p className="text-text-light leading-relaxed mb-6">{t("aboutP3")}</p>
-              <div className="flex flex-wrap gap-2.5">
-                {["🎓 KG to Secondary", "📚 Curriculum Expert", "🏆 95% Success Rate", "🇪🇬 Government Schools", "📖 Experimental Schools"].map((tag) => (
-                  <span key={tag} className="bg-primary-light text-primary-dark px-4 py-2 rounded-full text-sm font-medium">{tag}</span>
-                ))}
-              </div>
+        <div className="max-w-[800px] mx-auto px-6">
+          <div className="fade-section text-center" style={{ opacity: 0 }}>
+            <p className="text-primary font-semibold text-sm mb-2">{t("aboutSub")}</p>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-2">{t("aboutTitle")}</h2>
+            <p className="text-accent font-medium mb-6">{t("aboutRole")}</p>
+            <p className="text-text-light leading-relaxed mb-4">{t("aboutP1")}</p>
+            <p className="text-text-light leading-relaxed mb-4">{t("aboutP2")}</p>
+            <p className="text-text-light leading-relaxed mb-6">{t("aboutP3")}</p>
+            <div className="flex flex-wrap gap-2.5 justify-center">
+              {["🎓 KG to Secondary", "📚 Curriculum Expert", "🏆 95% Success Rate", "🇪🇬 Government Schools", "📖 Experimental Schools"].map((tag) => (
+                <span key={tag} className="bg-primary-light text-primary-dark px-4 py-2 rounded-full text-sm font-medium">{tag}</span>
+              ))}
             </div>
           </div>
         </div>
