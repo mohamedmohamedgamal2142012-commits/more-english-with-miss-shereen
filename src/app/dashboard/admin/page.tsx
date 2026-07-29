@@ -792,8 +792,14 @@ const Modal = memo(function Modal(p: AdminTabProps) {
             <select value={form.courseType || "lessons"} onChange={e => setForm({ ...form, courseType: e.target.value, videoUrl: "", embedCode: "" })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="lessons">{lang === "ar" ? "دروس نصية" : "Text Lessons"}</option><option value="video">{lang === "ar" ? "فيديو" : "Video Course"}</option></select>
             {form.courseType === "video" && (
               <div className="space-y-3">
-                <input placeholder={lang === "ar" ? "رابط اليوتيوب" : "YouTube URL"} value={form.videoUrl || ""} onChange={e => { const v = e.target.value; let embed = form.embedCode; if (v.includes("youtube.com/watch")) { const id = v.split("v=")[1]?.split("&")[0]; if (id) embed = `https://www.youtube.com/embed/${id}`; } setForm({ ...form, videoUrl: v, embedCode: embed }); }} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
-                <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value, videoUrl: "" })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-text-light">{lang === "ar" ? "رابط الفيديو (يوتيوب)" : "Video URL (YouTube)"}</label>
+                  <input placeholder={lang === "ar" ? "رابط اليوتيوب" : "YouTube URL"} value={form.videoUrl || ""} onChange={e => { const v = e.target.value; let embed = form.embedCode; if (v.includes("youtube.com/watch")) { const id = v.split("v=")[1]?.split("&")[0]; if (id) embed = `https://www.youtube.com/embed/${id}`; } setForm({ ...form, videoUrl: v, embedCode: embed }); }} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-text-light">{lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"}</label>
+                  <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value, videoUrl: "" })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
+                </div>
               </div>
             )}
             <textarea placeholder={lang === "ar" ? "الوصف" : "Description"} value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} /></>
@@ -804,8 +810,14 @@ const Modal = memo(function Modal(p: AdminTabProps) {
              <select value={form.lessonType || "text"} onChange={e => setForm({ ...form, lessonType: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm"><option value="text">{lang === "ar" ? "درس نصي" : "Text Lesson"}</option><option value="video">{lang === "ar" ? "درس فيديو" : "Video Lesson"}</option></select>
              <input type="file" accept="image/png,image/jpeg" onChange={e => { const f = e.target.files?.[0]; if (f) { if (!["image/png","image/jpeg"].includes(f.type)) { alert(lang === "ar" ? "الصيغة غير مدعومة (PNG/JPG فقط)" : "Unsupported format (PNG/JPG only)"); e.target.value = ""; return; } if (f.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); e.target.value = ""; return; } setForm({ ...form, thumbnail: f }); }}} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
              {form.thumbnail && typeof form.thumbnail === "string" && <img src={form.thumbnail} className="w-full h-32 object-cover rounded-xl" alt="thumbnail" />}
-             <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => { const v = e.target.value; let embed = form.embedCode; if (v.includes("youtube.com/watch")) { const id = v.split("v=")[1]?.split("&")[0]; if (id) embed = `https://www.youtube.com/embed/${id}`; } setForm({ ...form, videoUrl: v, embedCode: embed }); }} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
-            <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
+             <div className="space-y-1">
+               <label className="text-xs font-medium text-text-light">{lang === "ar" ? "رابط الفيديو (يوتيوب)" : "Video URL (YouTube)"}</label>
+               <input placeholder={lang === "ar" ? "رابط الفيديو" : "Video URL"} value={form.videoUrl || ""} onChange={e => { const v = e.target.value; let embed = form.embedCode; if (v.includes("youtube.com/watch")) { const id = v.split("v=")[1]?.split("&")[0]; if (id) embed = `https://www.youtube.com/embed/${id}`; } setForm({ ...form, videoUrl: v, embedCode: embed }); }} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
+             </div>
+             <div className="space-y-1">
+               <label className="text-xs font-medium text-text-light">{lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"}</label>
+               <textarea placeholder={lang === "ar" ? "كود التضمين (Embed)" : "Embed Code"} value={form.embedCode || ""} onChange={e => setForm({ ...form, embedCode: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={3} />
+             </div>
             <input placeholder={lang === "ar" ? "رابط PDF" : "PDF URL"} value={form.pdfUrl || ""} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
             <textarea placeholder={lang === "ar" ? "المحتوى" : "Content"} value={form.content || ""} onChange={e => setForm({ ...form, content: e.target.value })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" rows={4} />
             <input type="number" placeholder={lang === "ar" ? "الترتيب" : "Order"} value={form.order || 0} onChange={e => setForm({ ...form, order: Number(e.target.value) })} className="w-full px-4 py-3 border border-border rounded-xl text-sm" />
