@@ -110,6 +110,7 @@ export interface AppFile {
   id: string;
   name: string;
   url: string;
+  publicId: string;
   type: string;
   size: number;
   isPublic: boolean;

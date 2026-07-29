@@ -34,7 +34,7 @@ interface LessonsTabProps { lang: string; lessons: Lesson[]; userId?: string; ac
 interface WalletTabProps { lang: string; wallet: number; transactions: WalletTransaction[]; userId?: string; }
 interface ExamsTabProps { lang: string; exams: Exam[]; examResults: ExamResult[]; userId?: string; setActiveExam: (e: Exam | null) => void; examAnswers: Record<string, string>; setExamAnswers: (v: Record<string, string>) => void; examSubmitted: boolean; setExamSubmitted: (v: boolean) => void; examScore: number; setExamScore: (v: number) => void; examTimer: number; setExamTimer: (v: number) => void; }
 interface ExamPlayerProps { lang: string; activeExam: Exam; examAnswers: Record<string, string>; setExamAnswers: (v: Record<string, string>) => void; examSubmitted: boolean; setExamSubmitted: (v: boolean) => void; examScore: number; setExamScore: (v: number) => void; examTimer: number; setActiveExam: (v: Exam | null) => void; userId?: string; userName?: string; submitExamResult: (data: any) => Promise<void>; submitExamRef?: React.MutableRefObject<(() => void) | null>; }
-interface HomeworkTabProps { lang: string; homework: Homework[]; selectedHomework: string | null; setSelectedHomework: (v: string | null) => void; homeworkFiles: File[]; setHomeworkFiles: (v: File[]) => void; userId?: string; uploadFile: (file: File, path: string) => Promise<string>; submitHomeworkFn: (data: any) => Promise<void>; }
+interface HomeworkTabProps { lang: string; homework: Homework[]; selectedHomework: string | null; setSelectedHomework: (v: string | null) => void; homeworkFiles: File[]; setHomeworkFiles: (v: File[]) => void; userId?: string; uploadFile: (file: File, path: string) => Promise<{ url: string; publicId: string }>; submitHomeworkFn: (data: any) => Promise<void>; }
 interface FilesTabProps { lang: string; files: AppFile[]; lessons: Lesson[]; userId?: string; }
 interface ReportsTabProps { lang: string; reports: Report[]; }
 interface AchievementsTabProps { lang: string; badges: string[]; }
@@ -359,7 +359,7 @@ const HomeworkTabComp = memo(function HomeworkTabComp({ lang, homework, selected
                     setSubmitting(true);
                     const files = homeworkFiles;
                     for (const file of files) {
-                      const url = await uploadFile(file, `homework/${h.id}/${userId}/${file.name}`);
+                      const { url } = await uploadFile(file, `homework/${h.id}/${userId}`);
                       await submitHomeworkFn({ homeworkId: h.id, studentId: userId, files: [url] });
                     }
                     setSubmitting(false);

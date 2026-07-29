@@ -369,7 +369,7 @@ const FilesTab = memo(function FilesTab(p: AdminTabProps) {
               </div>
               <div className="flex gap-2">
                 <a href={f.url} target="_blank" className="px-2 py-1.5 rounded-lg bg-bg text-sm cursor-pointer"><IoEye /></a>
-                <button onClick={() => { deleteFile(f.id, f.url); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-bg text-red-500 text-sm cursor-pointer border-none"><IoTrash /></button>
+                <button onClick={() => { deleteFile(f.id, f.publicId); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-bg text-red-500 text-sm cursor-pointer border-none"><IoTrash /></button>
               </div>
             </div>
           );
@@ -916,7 +916,7 @@ export default function AdminDashboard() {
          const allowedTypes = ["image/png", "image/jpeg"];
          if (!allowedTypes.includes(thumbFile.type)) { alert(lang === "ar" ? "الصيغة غير مدعومة (PNG/JPG فقط)" : "Unsupported format (PNG/JPG only)"); return; }
          if (thumbFile.size > 2 * 1024 * 1024) { alert(lang === "ar" ? "حجم الصورة كبير جداً (الحد 2MB)" : "Image too large (max 2MB)"); return; }
-         thumbnailUrl = await uploadFile(thumbFile, `lesson-thumbnails/${Date.now()}_${thumbFile.name}`);
+          thumbnailUrl = (await uploadFile(thumbFile, "lesson-thumbnails")).url;
        }
        const data = { ...restForm, thumbnail: thumbnailUrl, codes: form.codes ? form.codes.split("\n").map((c: string) => c.trim()).filter(Boolean) : [], viewers: form.viewers || {} };
        if (editId) await saveLesson(editId, data); else await saveLesson(null, data);
@@ -953,8 +953,8 @@ export default function AdminDashboard() {
 
   const handleFileUpload = async () => {
     if (!selectedFile) return;
-    const url = await uploadFile(selectedFile, `files/${Date.now()}_${selectedFile.name}`);
-    await saveFile({ name: selectedFile.name, url, type: selectedFile.type, size: selectedFile.size, isPublic: form.isPublic !== false, lessonId: form.lessonId || "" });
+    const { url, publicId } = await uploadFile(selectedFile, "files");
+    await saveFile({ name: selectedFile.name, url, publicId, type: selectedFile.type, size: selectedFile.size, isPublic: form.isPublic !== false, lessonId: form.lessonId || "" });
     setSelectedFile(null);
     loadAll();
   };

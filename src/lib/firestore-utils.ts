@@ -2,8 +2,7 @@ import {
   collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, serverTimestamp, Timestamp
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { db } from "./firebase";
 import type {
   AppUser, Lesson, Course, Exam, ExamResult, Homework,
 HomeworkSubmission, AppFile, WalletTransaction, Report, 
@@ -227,17 +226,28 @@ export async function saveFile(data: Partial<AppFile>) {
   await setDoc(ref, data);
 }
 
-export async function deleteFile(id: string, url?: string) {
+export async function deleteFile(id: string, publicId?: string) {
   await deleteDoc(doc(db, "files", id));
-  if (url) {
-    try { await deleteObject(ref(storage, url)); } catch {}
+  if (publicId) {
+    try {
+      const res = await fetch("/api/delete-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ publicId, resourceType: "auto" }),
+      });
+      if (!res.ok) console.error("Failed to delete from Cloudinary");
+    } catch (e) { console.error(e); }
   }
 }
 
-export async function uploadFile(file: File, path: string) {
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+export async function uploadFile(file: File, folder: string): Promise<{ url: string; publicId: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("folder", folder);
+  const res = await fetch("/api/upload", { method: "POST", body: form });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Upload failed");
+  return { url: data.url, publicId: data.publicId };
 }
 
 // === Wallet ===
