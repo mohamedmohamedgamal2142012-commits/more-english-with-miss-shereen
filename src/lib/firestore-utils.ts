@@ -386,3 +386,13 @@ export async function sendMessage(data: Partial<ChatMessage>) {
   const ref = doc(collection(db, "chat-messages"));
   await setDoc(ref, data);
 }
+
+export async function fetchFinanceAdjustments() {
+  const snap = await getDoc(doc(db, "finance", "adjustments"));
+  if (!snap.exists()) return { revenueAdj: 0, debitsAdj: 0 };
+  return snap.data() as { revenueAdj: number; debitsAdj: number };
+}
+
+export async function saveFinanceAdjustments(data: { revenueAdj: number; debitsAdj: number }) {
+  await setDoc(doc(db, "finance", "adjustments"), data);
+}

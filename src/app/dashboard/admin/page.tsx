@@ -18,7 +18,7 @@ import {
   fetchNotifications, sendNotification, deleteNotification,
   updateUserProfile,
   fetchWalletPromos, createWalletPromo, validateWalletPromo,
-  deleteWalletPromo
+  deleteWalletPromo, fetchFinanceAdjustments, saveFinanceAdjustments
 } from "@/lib/firestore-utils";
 import type { AppUser, Course, Lesson, Exam, ExamResult, Homework, HomeworkSubmission, AppFile, WalletTransaction, Report, Notification, WalletPromo } from "@/lib/types";
 import {
@@ -77,11 +77,20 @@ interface AdminTabProps {
 
 // ====== OVERVIEW ======
 const OverviewTab = memo(function OverviewTab(p: AdminTabProps) {
-  const { lang, students, lessons, pendingStudents, transactions } = p;
+  const { lang, students, lessons, pendingStudents, transactions, loadAll } = p;
   const activeStudents = students.filter(s => s.status === "active").length;
   const pendingCount = pendingStudents.length;
-  const revenue = transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0);
-  const debits = transactions.reduce((a, t) => t.type === "debit" ? a + t.amount : a, 0);
+  const baseRevenue = transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0);
+  const baseDebits = transactions.reduce((a, t) => t.type === "debit" ? a + t.amount : a, 0);
+  const [revenueAdj, setRevenueAdj] = useState(0);
+  const [debitsAdj, setDebitsAdj] = useState(0);
+  const [editingFinance, setEditingFinance] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState(0);
+  useEffect(() => {
+    fetchFinanceAdjustments().then(r => { setRevenueAdj(r.revenueAdj); setDebitsAdj(r.debitsAdj); }).catch(() => {});
+  }, [transactions]);
+  const revenue = baseRevenue + revenueAdj;
+  const debits = baseDebits + debitsAdj;
   const netProfit = revenue - debits;
   const financeCards = [
     { key: "revenue", icon: IoWallet, bg: "bg-[rgba(59,130,246,0.1)]", color: "text-blue-600", value: revenue, label: lang === "ar" ? "إجمالي الإيرادات" : "Total Revenue" },
@@ -102,9 +111,23 @@ const OverviewTab = memo(function OverviewTab(p: AdminTabProps) {
           <div key={s.label} className="bg-white rounded-[20px] p-6 shadow-sm border border-border flex items-center gap-4">
             <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center ${s.color}`}><s.icon className="text-xl" /></div>
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <strong className="text-2xl font-bold block">{s.value}</strong>
-              </div>
+              {s.key && editingFinance === s.key ? (
+                <div className="flex items-center gap-2">
+                  <input type="number" value={editValue} onChange={e => setEditValue(Number(e.target.value))} className="w-24 px-2 py-1 border border-border rounded-lg text-sm" autoFocus />
+                  <button onClick={async () => {
+                    const curr = await fetchFinanceAdjustments();
+                    if (s.key === "revenue") { const diff = editValue - baseRevenue; setRevenueAdj(diff); await saveFinanceAdjustments({ revenueAdj: diff, debitsAdj: curr.debitsAdj }); }
+                    else if (s.key === "debits") { const diff = editValue - baseDebits; setDebitsAdj(diff); await saveFinanceAdjustments({ revenueAdj: curr.revenueAdj, debitsAdj: diff }); }
+                    setEditingFinance(null);
+                    loadAll();
+                  }} className="text-xs text-primary cursor-pointer bg-transparent border-none">{lang === "ar" ? "حفظ" : "Save"}</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <strong className="text-2xl font-bold block">{s.value}</strong>
+                  {s.key && <button onClick={() => { setEditValue(s.key === "revenue" ? revenue : s.key === "profit" ? netProfit : debits); setEditingFinance(s.key); }} className="text-xs text-text-light cursor-pointer bg-transparent border-none hover:text-primary"><IoCreate /></button>}
+                </div>
+              )}
               <span className="text-sm text-text-light">{s.label}</span>
             </div>
           </div>
