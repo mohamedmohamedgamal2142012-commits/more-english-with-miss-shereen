@@ -330,8 +330,9 @@ export async function deleteWalletPromo(id: string) {
 // === Leaderboard ===
 export async function fetchLeaderboard() {
   const snap = await getDocs(collection(db, "users"));
-  const list = snap.docs.map(d => ({ id: d.id, name: d.data().name, wallet: d.data().wallet || 0 } as any));
-  return list.filter((u: any) => u.name).sort((a: any, b: any) => b.wallet - a.wallet).slice(0, 50);
+  const ADMIN_EMAIL = "Admin@Miss-Shereen4563787463784637874886437823.com";
+  const list = snap.docs.map(d => ({ id: d.id, name: d.data().name, email: d.data().email, wallet: d.data().wallet || 0, hiddenFromLeaderboard: d.data().hiddenFromLeaderboard || false } as any));
+  return list.filter((u: any) => u.name && !u.hiddenFromLeaderboard && u.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()).sort((a: any, b: any) => b.wallet - a.wallet).slice(0, 50);
 }
 
 // === Reports ===

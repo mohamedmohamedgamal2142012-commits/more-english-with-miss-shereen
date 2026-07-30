@@ -20,6 +20,7 @@ export interface AppUser {
   badges: string[];
   points: number;
   activatedLessons?: string[];
+  hiddenFromLeaderboard?: boolean;
   createdAt: any;
 }
 
