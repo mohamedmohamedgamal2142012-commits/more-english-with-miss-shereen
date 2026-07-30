@@ -34,39 +34,6 @@ export default function Footer({ lang }: FooterProps) {
           </div>
 
           <div>
-            <h4 className="text-white text-base font-semibold mb-5">{t("quickLinks")}</h4>
-            <ul className="flex flex-col gap-2.5 list-none">
-              {["about", "stages", "contact"].map((key) => (
-                <li key={key}>
-                  <Link
-                    href={`/#${key}`}
-                    className="text-sm text-white/60 transition-all duration-300 hover:text-primary"
-                  >
-                    {t(`nav${key.charAt(0).toUpperCase() + key.slice(1)}`)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white text-base font-semibold mb-5">{t("quickLinks")}</h4>
-            <ul className="flex flex-col gap-2.5 list-none">
-              {["kgCourses", "primaryCourses", "prepCourses", "secCourses"].map((key) => (
-                <li key={key}>
-                  <a
-                    href="#"
-                    onClick={(e) => { e.preventDefault(); alert(`Demo: ${key}`); }}
-                    className="text-sm text-white/60 transition-all duration-300 hover:text-primary"
-                  >
-                    {t(key)}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
             <h4 className="text-white text-base font-semibold mb-5">{t("navContact")}</h4>
             <ul className="flex flex-col gap-2.5 list-none text-sm text-white/60">
               <li>+20 10 94589403</li>
