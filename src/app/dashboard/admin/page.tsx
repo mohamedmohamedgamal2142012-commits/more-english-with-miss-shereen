@@ -488,7 +488,7 @@ const WalletPromosTab = memo(function WalletPromosTab(p: AdminTabProps) {
     <div>
       <div className="flex justify-between items-center mb-5">
         <h3 className="text-lg font-semibold">{lang === "ar" ? "قسائم المحفظة" : "Wallet Promos"}</h3>
-        <button onClick={() => p.openAdd("promo")} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إنشاء كود" : "Create Code"}</button>
+        <button onClick={() => { p.setForm({ promoAmount: 0, promoMaxUses: 1, promoExpires: "" }); p.setShowPromoModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none"><IoAdd /> {lang === "ar" ? "إنشاء كود" : "Create Code"}</button>
       </div>
       <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
         <table className="w-full text-sm border-collapse">
