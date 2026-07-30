@@ -115,43 +115,7 @@ export default function HomePage() {
             <div className="absolute w-[300px] h-[300px] rounded-full bg-primary opacity-[0.08] top-[30%] right-[10%] -translate-y-1/2" />
             <div className="absolute w-[200px] h-[200px] rounded-full bg-accent opacity-[0.08] bottom-[10%] left-[10%]" />
 
-            {/* Floating Cards */}
-            <div className="floating-card absolute top-[8%] right-[5%] z-20 bg-white rounded-xl px-4 py-3 shadow-lg flex items-center gap-3 animate-float border border-primary/10 pointer-events-none" style={{ animationDelay: "0s" }}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-primary to-accent flex items-center justify-center text-white text-sm flex-shrink-0">
-                <FaUsers />
-              </div>
-              <div>
-                 <strong className="text-sm block">{studentCount > 0 ? studentCount.toLocaleString() : "—"}</strong>
-                <span className="text-xs text-text-light">{t("overview")}</span>
-              </div>
-            </div>
-            <div className="floating-card absolute top-[40%] left-[-10%] z-20 bg-white rounded-xl px-4 py-3 shadow-lg flex items-center gap-3 animate-float border border-primary/10 pointer-events-none" style={{ animationDelay: "0.8s" }}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-accent to-purple-500 flex items-center justify-center text-white text-sm flex-shrink-0">
-                <FaBookOpen />
-              </div>
-              <div>
-                <strong className="text-sm block">150+</strong>
-                <span className="text-xs text-text-light">{t("lessonsLabel")}</span>
-              </div>
-            </div>
-            <div className="floating-card absolute bottom-[20%] right-[-5%] z-20 bg-white rounded-xl px-4 py-3 shadow-lg flex items-center gap-3 animate-float border border-primary/10 pointer-events-none" style={{ animationDelay: "1.6s" }}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-yellow-500 to-red-500 flex items-center justify-center text-white text-sm flex-shrink-0">
-                <IoInfinite />
-              </div>
-              <div>
-                <strong className="text-sm block">KG1 → G12</strong>
-                <span className="text-xs text-text-light">{t("overview")}</span>
-              </div>
-            </div>
-            <div className="floating-card absolute bottom-[5%] left-[5%] z-20 bg-white rounded-xl px-4 py-3 shadow-lg flex items-center gap-3 animate-float border border-primary/10 pointer-events-none" style={{ animationDelay: "2.4s" }}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-white text-sm flex-shrink-0">
-                <IoBarChart />
-              </div>
-              <div>
-                <strong className="text-sm block">95%</strong>
-                <span className="text-xs text-text-light">{t("overview")}</span>
-              </div>
-            </div>
+
           </div>
         </div>
       </section>
