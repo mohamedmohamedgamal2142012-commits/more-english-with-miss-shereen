@@ -186,7 +186,6 @@ export default function HomePage() {
                   { icon: FaPhone, label: "phone", value: "+20 10 94589403" },
                   { icon: FaWhatsapp, label: "WhatsApp", value: "+20 10 94589403" },
                   { icon: FaEnvelope, label: "email", value: "shoshamairy@gmail.com" },
-                  { icon: FaMapMarkerAlt, label: "address", value: "123 Education Street, Cairo, Egypt" },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[rgba(0,191,166,0.1)] to-[rgba(79,70,229,0.08)] flex items-center justify-center text-primary flex-shrink-0">
