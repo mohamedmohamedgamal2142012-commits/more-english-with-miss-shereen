@@ -80,13 +80,8 @@ const OverviewTab = memo(function OverviewTab(p: AdminTabProps) {
   const { lang, students, lessons, pendingStudents, transactions } = p;
   const activeStudents = students.filter(s => s.status === "active").length;
   const pendingCount = pendingStudents.length;
-  const [revenue, setRevenue] = useState(transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0));
-  const [debits, setDebits] = useState(transactions.reduce((a, t) => t.type === "debit" ? a + t.amount : a, 0));
-  const [editingFinance, setEditingFinance] = useState<string | null>(null);
-  useEffect(() => {
-    setRevenue(transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0));
-    setDebits(transactions.reduce((a, t) => t.type === "debit" ? a + t.amount : a, 0));
-  }, [transactions]);
+  const revenue = transactions.reduce((a, t) => t.type === "credit" ? a + t.amount : a, 0);
+  const debits = transactions.reduce((a, t) => t.type === "debit" ? a + t.amount : a, 0);
   const netProfit = revenue - debits;
   const financeCards = [
     { key: "revenue", icon: IoWallet, bg: "bg-[rgba(59,130,246,0.1)]", color: "text-blue-600", value: revenue, label: lang === "ar" ? "إجمالي الإيرادات" : "Total Revenue" },
@@ -107,21 +102,9 @@ const OverviewTab = memo(function OverviewTab(p: AdminTabProps) {
           <div key={s.label} className="bg-white rounded-[20px] p-6 shadow-sm border border-border flex items-center gap-4">
             <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center ${s.color}`}><s.icon className="text-xl" /></div>
             <div className="flex-1">
-              {s.key && editingFinance === s.key ? (
-                <div className="flex items-center gap-2">
-                  <input type="number" value={s.key === "revenue" ? revenue : s.key === "profit" ? netProfit : debits} onChange={e => {
-                    const v = Number(e.target.value);
-                    if (s.key === "revenue") setRevenue(v);
-                    else if (s.key === "debits") setDebits(v);
-                  }} className="w-24 px-2 py-1 border border-border rounded-lg text-sm" autoFocus />
-                  <button onClick={() => setEditingFinance(null)} className="text-xs text-primary cursor-pointer bg-transparent border-none">{lang === "ar" ? "حفظ" : "Save"}</button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <strong className="text-2xl font-bold block">{s.value}</strong>
-                  {s.key && <button onClick={() => setEditingFinance(s.key)} className="text-xs text-text-light cursor-pointer bg-transparent border-none hover:text-primary"><IoCreate /></button>}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <strong className="text-2xl font-bold block">{s.value}</strong>
+              </div>
               <span className="text-sm text-text-light">{s.label}</span>
             </div>
           </div>
