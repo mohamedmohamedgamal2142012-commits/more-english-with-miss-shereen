@@ -14,7 +14,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
-export const ADMIN_EMAIL = "MrsshereenelmairyTHEONLYTOPADMININTHEUDUCATIONALPLATFORM9938892@#@#@#245$%4533#@ADMIN.COM";
+export const ADMIN_EMAIL = "MrsshereenelmairyTHEONLYTOPADMININTHEUDUCATIONALPLATFORM9938892@@@245$%4533@ADMIN.COM";
 
 type UserRole = "student" | "teacher" | "admin" | null;
 type UserStatus = "pending" | "active" | "banned" | null;
