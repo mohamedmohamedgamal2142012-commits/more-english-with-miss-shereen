@@ -69,7 +69,7 @@ interface AdminTabProps {
   loadAll: () => Promise<void>;
   handleSubmit: (e: FormEvent) => Promise<void>;
   handleDelete: (type: "course" | "lesson" | "exam" | "homework" | "report", id: string) => Promise<void>;
-  handleGrade: (subId: string, grade: number, annotation: string, reward: number) => Promise<void>;
+  handleGrade: (subId: string, grade: number, annotation: string) => Promise<void>;
   handleFileUpload: () => Promise<void>;
   openAdd: (type: ModalType) => void;
   openEdit: (type: ModalType, item: any) => void;
@@ -645,13 +645,12 @@ const HomeworkTab = memo(function HomeworkTab(p: AdminTabProps) {
                     {sub.grade !== undefined ? (
                       <div className="text-right">
                         <span className="text-lg font-bold text-primary">{sub.grade}</span>
-                        {sub.reward ? <p className="text-xs text-green-600">+{sub.reward} {lang === "ar" ? "ج.م" : "EGP"}</p> : null}
                         <p className="text-xs text-text-light">{sub.annotation}</p>
                       </div>
                     ) : (
                       <button onClick={() => {
                         const grade = prompt(lang === "ar" ? "الدرجة:" : "Grade:");
-                        if (grade) handleGrade(sub.id, Number(grade), prompt(lang === "ar" ? "ملاحظات:" : "Notes:") || "", Number(prompt(lang === "ar" ? "المكافأة:" : "Reward:") || "0"));
+                        if (grade) handleGrade(sub.id, Number(grade), prompt(lang === "ar" ? "ملاحظات:" : "Notes:") || "");
                       }} className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs cursor-pointer border-none">{lang === "ar" ? "تصحيح" : "Grade"}</button>
                     )}
                   </div>
@@ -1014,8 +1013,8 @@ export default function AdminDashboard() {
     loadAll();
   };
 
-  const handleGrade = async (subId: string, grade: number, annotation: string, reward: number) => {
-    await gradeSubmission(subId, grade, annotation, reward);
+  const handleGrade = async (subId: string, grade: number, annotation: string) => {
+    await gradeSubmission(subId, grade, annotation);
     loadAll();
   };
 

@@ -225,8 +225,8 @@ export async function fetchSubmissions(homeworkId?: string) {
   return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as HomeworkSubmission));
 }
 
-export async function gradeSubmission(id: string, grade: number, annotation: string, reward: number) {
-  await updateDoc(doc(db, "homework-submissions", id), { grade, annotation, reward, gradedAt: serverTimestamp() });
+export async function gradeSubmission(id: string, grade: number, annotation: string) {
+  await updateDoc(doc(db, "homework-submissions", id), { grade, annotation, gradedAt: serverTimestamp() });
 }
 
 // === Files ===
