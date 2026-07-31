@@ -18,7 +18,8 @@ import {
   fetchNotifications, sendNotification, deleteNotification,
   updateUserProfile,
   fetchWalletPromos, createWalletPromo, validateWalletPromo,
-  deleteWalletPromo, fetchFinanceAdjustments, saveFinanceAdjustments
+  deleteWalletPromo, fetchFinanceAdjustments, saveFinanceAdjustments,
+  fetchLeaderboardOrder, saveLeaderboardOrder
 } from "@/lib/firestore-utils";
 import type { AppUser, Course, Lesson, Exam, ExamResult, Homework, HomeworkSubmission, AppFile, WalletTransaction, Report, Notification, WalletPromo } from "@/lib/types";
 import {
@@ -27,11 +28,12 @@ import {
   IoCheckmarkCircle, IoCloseCircle, IoBan, IoAdd, IoClose,
   IoArrowBack, IoSearch, IoFilter, IoReload, IoWallet,
   IoStatsChart, IoRibbon, IoSettings, IoPaperPlane,
-  IoEye, IoEyeOff, IoCloudUpload, IoLink, IoCopy, IoCash
+  IoEye, IoEyeOff, IoCloudUpload, IoLink, IoCopy, IoCash,
+  IoArrowUp, IoArrowDown
 } from "react-icons/io5";
 import { FaUserGraduate, FaUsers, FaBookOpen, FaPencilAlt, FaChalkboardTeacher, FaCreditCard, FaFileAlt, FaRobot, FaGamepad, FaChartBar, FaWhatsapp } from "react-icons/fa";
 
-type ATab = "overview" | "students" | "requests" | "courses" | "lessons" | "files" | "wallet" | "wallet-promos" | "exams" | "homework" | "reports" | "notifications" | "settings";
+type ATab = "overview" | "students" | "leaderboard" | "requests" | "courses" | "lessons" | "files" | "wallet" | "wallet-promos" | "exams" | "homework" | "reports" | "notifications" | "settings";
 
 type ModalType = "course" | "lesson" | "exam" | "homework" | "wallet" | "promo" | "report" | "notif";
 
@@ -260,12 +262,130 @@ const StudentsTab = memo(function StudentsTab(p: AdminTabProps) {
                     <button onClick={() => { setEditingStudent(s); setEditStudentForm({ name: s.name, phone: s.phone, school: s.school, department: s.department, governorate: s.governorate, parentName: s.parentName, parentPhone: s.parentPhone, wallet: s.wallet }); }} className="px-2 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs cursor-pointer border-none" title="Edit"><FaPencilAlt /></button>
                     <button onClick={() => { deleteUser(s.id); loadAll(); }} className="px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs cursor-pointer border-none" title="Delete"><IoTrash /></button>
                     <button onClick={() => { setWalletForm({ studentId: s.id, txType: "credit", amount: 0, description: "" }); setShowWalletModal(true); }} className="px-2 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs cursor-pointer border-none" title="Add Wallet"><IoWallet /></button>
-                    <button onClick={async () => { await updateUserProfile(s.id, { hiddenFromLeaderboard: !s.hiddenFromLeaderboard }); loadAll(); }} className={`px-2 py-1.5 rounded-lg text-xs cursor-pointer border-none ${s.hiddenFromLeaderboard ? "bg-purple-100 text-purple-700" : "bg-orange-100 text-orange-700"}`} title={s.hiddenFromLeaderboard ? (lang === "ar" ? "إظهار في البطولة" : "Show on Leaderboard") : (lang === "ar" ? "إخفاء من البطولة" : "Hide from Leaderboard")}>{s.hiddenFromLeaderboard ? "🏆❌" : "🏆"}</button>
                     {s.phone && <a href={`https://wa.me/${s.phone.replace(/^0/, "2")}`} target="_blank" className="px-2 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs inline-flex items-center cursor-pointer"><FaWhatsapp /></a>}
                   </div>
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+});
+
+// ====== LEADERBOARD ======
+const LeaderboardTab = memo(function LeaderboardTab(p: AdminTabProps) {
+  const { lang, students, loadAll } = p;
+  const ADMIN_EMAIL = "Admin@Miss-Shereen4563787463784637874886437823.com";
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    if (!loaded) {
+      fetchLeaderboardOrder().then(ids => { setOrderIds(ids); setLoaded(true); }).catch(() => setLoaded(true));
+    }
+  }, [loaded]);
+
+  const allRows = students.filter(s => s.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase());
+  const visible = allRows.filter(s => !s.hiddenFromLeaderboard);
+  const hidden = allRows.filter(s => s.hiddenFromLeaderboard);
+
+  const sortedVisible = [...visible].sort((a, b) => {
+    const ia = orderIds.indexOf(a.id);
+    const ib = orderIds.indexOf(b.id);
+    if (ia === -1 && ib === -1) return b.wallet - a.wallet;
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+  const sortedHidden = [...hidden].sort((a, b) => b.wallet - a.wallet);
+
+  const move = (index: number, dir: number) => {
+    const target = index + dir;
+    if (target < 0 || target >= sortedVisible.length) return;
+    const next = [...sortedVisible];
+    [next[index], next[target]] = [next[target], next[index]];
+    setOrderIds(next.map(s => s.id));
+  };
+
+  const toggleVisibility = async (s: AppUser) => {
+    const newHidden = !s.hiddenFromLeaderboard;
+    await updateUserProfile(s.id, { hiddenFromLeaderboard: newHidden });
+    let ids = [...orderIds];
+    if (newHidden) {
+      ids = ids.filter(id => id !== s.id);
+    } else if (!ids.includes(s.id)) {
+      ids.push(s.id);
+    }
+    setOrderIds(ids);
+    await loadAll();
+  };
+
+  const saveOrder = async () => {
+    setSaving(true);
+    setMsg("");
+    await saveLeaderboardOrder(sortedVisible.map(s => s.id));
+    setMsg(lang === "ar" ? "تم حفظ الترتيب بنجاح" : "Order saved successfully");
+    setSaving(false);
+  };
+
+  const resetOrder = async () => {
+    setOrderIds([]);
+    await saveLeaderboardOrder([]);
+    setMsg(lang === "ar" ? "تمت إعادة الترتيب التلقائي (حسب الرصيد)" : "Restored auto order (by wallet)");
+    await loadAll();
+  };
+
+  return (
+    <div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
+        <div>
+          <h3 className="text-lg font-semibold">{lang === "ar" ? "إدارة البطولة" : "Leaderboard Management"} ({sortedVisible.length})</h3>
+          <p className="text-sm text-text-light mt-1">{lang === "ar" ? "استخدم الأسهم لترتيب الطلاب ثم اضغط حفظ. الطلاب المخفيون لا يظهرون للطلاب." : "Use the arrows to reorder students, then save. Hidden students won't appear to students."}</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={resetOrder} className="px-4 py-2.5 rounded-full text-sm font-semibold bg-bg text-text border border-border cursor-pointer border-none">{lang === "ar" ? "ترتيب تلقائي" : "Auto Order"}</button>
+          <button onClick={saveOrder} disabled={saving} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white cursor-pointer border-none disabled:opacity-50">{saving ? "..." : <IoCheckmarkCircle />} {lang === "ar" ? "حفظ الترتيب" : "Save Order"}</button>
+        </div>
+      </div>
+      {msg && <div className="mb-4 px-4 py-2.5 rounded-xl bg-green-50 text-green-700 text-sm border border-green-200">{msg}</div>}
+      <div className="bg-white rounded-[20px] p-6 shadow-sm border border-border overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead><tr>{[lang === "ar" ? "الترتيب" : "Rank", lang === "ar" ? "الاسم" : "Name", lang === "ar" ? "المحفظة" : "Wallet", lang === "ar" ? "الترتيب" : "Move", lang === "ar" ? "الإظهار/الإخفاء" : "Visibility"].map(h => <th key={h} className="text-left px-4 py-3 font-semibold text-text-light border-b-2 border-border text-xs uppercase tracking-wider">{h}</th>)}</tr></thead>
+          <tbody>
+            {sortedVisible.map((s, i) => (
+              <tr key={s.id} className="hover:bg-bg transition-colors">
+                <td className="px-4 py-3.5 border-b border-border">
+                  <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-gray-200 text-gray-700" : i === 2 ? "bg-amber-100 text-amber-700" : "bg-bg text-text"}`}>{i + 1}</span>
+                </td>
+                <td className="px-4 py-3.5 border-b border-border font-medium">{s.name}</td>
+                <td className="px-4 py-3.5 border-b border-border">{s.wallet || 0} {lang === "ar" ? "ج.م" : "EGP"}</td>
+                <td className="px-4 py-3.5 border-b border-border">
+                  <div className="flex gap-1.5">
+                    <button onClick={() => move(i, -1)} disabled={i === 0} className="px-2 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs cursor-pointer border-none disabled:opacity-40" title="Up"><IoArrowUp /></button>
+                    <button onClick={() => move(i, 1)} disabled={i === sortedVisible.length - 1} className="px-2 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs cursor-pointer border-none disabled:opacity-40" title="Down"><IoArrowDown /></button>
+                  </div>
+                </td>
+                <td className="px-4 py-3.5 border-b border-border">
+                  <button onClick={() => toggleVisibility(s)} className="px-2 py-1.5 rounded-lg bg-purple-100 text-purple-700 text-xs cursor-pointer border-none" title={lang === "ar" ? "إخفاء من البطولة" : "Hide from Leaderboard"}>🏆❌</button>
+                </td>
+              </tr>
+            ))}
+            {sortedHidden.map(s => (
+              <tr key={s.id} className="opacity-50">
+                <td className="px-4 py-3.5 border-b border-border"><span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-gray-100 text-gray-500">—</span></td>
+                <td className="px-4 py-3.5 border-b border-border font-medium line-through">{s.name}</td>
+                <td className="px-4 py-3.5 border-b border-border">{s.wallet || 0} {lang === "ar" ? "ج.م" : "EGP"}</td>
+                <td className="px-4 py-3.5 border-b border-border text-text-light text-xs">{lang === "ar" ? "مخفي" : "Hidden"}</td>
+                <td className="px-4 py-3.5 border-b border-border">
+                  <button onClick={() => toggleVisibility(s)} className="px-2 py-1.5 rounded-lg bg-orange-100 text-orange-700 text-xs cursor-pointer border-none" title={lang === "ar" ? "إظهار في البطولة" : "Show on Leaderboard"}>🏆</button>
+                </td>
+              </tr>
+            ))}
+            {allRows.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-text-light">{lang === "ar" ? "لا يوجد طلاب" : "No students"}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -1031,6 +1151,7 @@ export default function AdminDashboard() {
   const sidebarItems: { key: ATab; icon: any; label: string }[] = [
     { key: "overview", icon: IoGrid, label: lang === "ar" ? "نظرة عامة" : "Overview" },
     { key: "students", icon: FaUsers, label: lang === "ar" ? "الطلاب" : "Students" },
+    { key: "leaderboard", icon: IoRibbon, label: lang === "ar" ? "البطولة" : "Leaderboard" },
     { key: "requests", icon: IoPeople, label: lang === "ar" ? "طلبات التسجيل" : "Requests" },
     { key: "courses", icon: FaBookOpen, label: lang === "ar" ? "الكورسات" : "Courses" },
     { key: "lessons", icon: IoBook, label: lang === "ar" ? "الدروس" : "Lessons" },
@@ -1057,6 +1178,7 @@ export default function AdminDashboard() {
     switch (tab) {
       case "overview": return <OverviewTab {...tabProps} />;
       case "students": return <StudentsTab {...tabProps} />;
+      case "leaderboard": return <LeaderboardTab {...tabProps} />;
       case "requests": return <RequestsTab {...tabProps} />;
       case "courses": return <CoursesTab {...tabProps} />;
       case "lessons": return <LessonsTab {...tabProps} />;
