@@ -343,8 +343,8 @@ export async function saveLeaderboardOrder(userIds: string[]) {
 export async function fetchLeaderboard() {
   const snap = await getDocs(collection(db, "users"));
   const ADMIN_EMAIL = "Admin@Miss-Shereen4563787463784637874886437823.com";
-  const list = snap.docs.map(d => ({ id: d.id, name: d.data().name, email: d.data().email, wallet: d.data().wallet || 0, hiddenFromLeaderboard: d.data().hiddenFromLeaderboard || false } as any));
-  const visible = list.filter((u: any) => u.name && !u.hiddenFromLeaderboard && u.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase());
+  const list = snap.docs.map(d => ({ id: d.id, name: d.data().name, role: d.data().role, email: d.data().email, wallet: d.data().wallet || 0, hiddenFromLeaderboard: d.data().hiddenFromLeaderboard || false } as any));
+  const visible = list.filter((u: any) => u.name && u.role === "student" && !u.hiddenFromLeaderboard && u.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase());
   const order = await fetchLeaderboardOrder();
   if (order.length > 0) {
     visible.sort((a: any, b: any) => {
